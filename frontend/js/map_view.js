@@ -259,6 +259,16 @@ function initMap() {
     ensureRightPanelClosed();
   });
 
+  map.on('contextmenu', (e) => {
+    const { lat, lng } = e.latlng;
+    if (typeof window.openManualInstanceWizard === 'function') {
+      window.openManualInstanceWizard(null, null, null, {
+        lat: lat.toFixed(6),
+        lon: lng.toFixed(6)
+      });
+    }
+  });
+
   map.on('tileload', () => {});
   map.on('tileerror', (e) => {
     console.error('[map] tile error', e);

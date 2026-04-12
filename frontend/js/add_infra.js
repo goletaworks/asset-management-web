@@ -561,7 +561,7 @@
   }
 
   // Manual Instance Wizard
-  async function openManualInstanceWizard(company, location, assetType) {
+  async function openManualInstanceWizard(company, location, assetType, { lat: prefillLat, lon: prefillLon } = {}) {
     const view = `
       <div class="panel-form" id="manualPanel">
         <h2 style="margin-top:0;">Add ${assetType ? `“${assetType}”` : 'Asset'} Manually</h2>
@@ -629,6 +629,110 @@
     if (!host) return;
 
     const $ = sel => host.querySelector(sel);
+
+    // Pre-fill lat/lon when provided (e.g. from map right-click)
+    if (prefillLat != null) $('#mLat').value = prefillLat;
+    if (prefillLon != null) $('#mLon').value = prefillLon;
+
+    // When context is not pre-set, replace the read-only card with cascading dropdowns
+    const hasContext = !!(company && location && assetType);
+    let selectedCompany = company || '';
+    let selectedLocation = location || '';
+    let selectedAssetType = assetType || '';
+
+    if (!hasContext) {
+      const card = host.querySelector('.card');
+      if (card) {
+        card.id = 'mContextCard';
+        card.innerHTML = `
+          <div class="card-title">Context</div>
+          <div class="form-row">
+            <label>Company*</label>
+            <select id="mCompany"><option value="">Loading\u2026</option></select>
+          </div>
+          <div class="form-row">
+            <label>Location / Province*</label>
+            <select id="mLocation" disabled><option value="">Select company first\u2026</option></select>
+          </div>
+          <div class="form-row">
+            <label>Asset Type (Category)*</label>
+            <select id="mAssetType" disabled><option value="">Select location first\u2026</option></select>
+          </div>`;
+      }
+
+      const mCompany = $('#mCompany');
+      const mLocation = $('#mLocation');
+      const mAssetType = $('#mAssetType');
+
+      // Populate company dropdown
+      try {
+        const companies = await window.electronAPI.getActiveCompanies();
+        mCompany.innerHTML = '<option value="">Select company\u2026</option>';
+        (companies || []).forEach(c => {
+          const name = typeof c === 'string' ? c : c.name;
+          if (name) mCompany.innerHTML += '<option value="' + name + '">' + name + '</option>';
+        });
+      } catch (e) {
+        console.error('[manualWizard] failed to load companies', e);
+        mCompany.innerHTML = '<option value="">Failed to load</option>';
+      }
+
+      mCompany.addEventListener('change', async () => {
+        selectedCompany = mCompany.value;
+        selectedLocation = '';
+        selectedAssetType = '';
+        mAssetType.innerHTML = '<option value="">Select location first\u2026</option>';
+        mAssetType.disabled = true;
+
+        if (!selectedCompany) {
+          mLocation.innerHTML = '<option value="">Select company first\u2026</option>';
+          mLocation.disabled = true;
+          return;
+        }
+        mLocation.innerHTML = '<option value="">Loading\u2026</option>';
+        mLocation.disabled = true;
+        try {
+          const locs = await window.electronAPI.getLocationsForCompany(selectedCompany);
+          mLocation.innerHTML = '<option value="">Select location\u2026</option>';
+          (locs || []).forEach(l => {
+            mLocation.innerHTML += '<option value="' + l + '">' + l + '</option>';
+          });
+          mLocation.disabled = false;
+        } catch (e) {
+          console.error('[manualWizard] failed to load locations', e);
+          mLocation.innerHTML = '<option value="">Failed to load</option>';
+        }
+      });
+
+      mLocation.addEventListener('change', async () => {
+        selectedLocation = mLocation.value;
+        selectedAssetType = '';
+
+        if (!selectedLocation) {
+          mAssetType.innerHTML = '<option value="">Select location first\u2026</option>';
+          mAssetType.disabled = true;
+          return;
+        }
+        mAssetType.innerHTML = '<option value="">Loading\u2026</option>';
+        mAssetType.disabled = true;
+        try {
+          const types = await window.electronAPI.getAssetTypesForLocation(selectedCompany, selectedLocation);
+          mAssetType.innerHTML = '<option value="">Select asset type\u2026</option>';
+          (types || []).forEach(t => {
+            mAssetType.innerHTML += '<option value="' + t + '">' + t + '</option>';
+          });
+          mAssetType.disabled = false;
+        } catch (e) {
+          console.error('[manualWizard] failed to load asset types', e);
+          mAssetType.innerHTML = '<option value="">Failed to load</option>';
+        }
+      });
+
+      mAssetType.addEventListener('change', () => {
+        selectedAssetType = mAssetType.value;
+      });
+    }
+
     const sectionsHost = $('#mSectionsEditor');
 
     // ── Helpers (no edit toggle; sections start and remain in editing) ──
@@ -740,6 +844,11 @@
     $('#mCancel').addEventListener('click', () => closePanel());
 
     $('#mNext').addEventListener('click', () => {
+      if (!hasContext) {
+        if (!selectedCompany || !selectedLocation || !selectedAssetType) {
+          return appAlert('Please select a Company, Location, and Asset Type.');
+        }
+      }
       const stationId = ($('#mStationId')?.value || '').trim();
       const siteName  = ($('#mSiteName')?.value || '').trim();
       const lat       = ($('#mLat')?.value || '').trim();
@@ -778,10 +887,15 @@
 
     // ── Save: same payload shape as before ──
     $('#mSave').addEventListener('click', async () => {
+      if (!hasContext) {
+        if (!selectedCompany || !selectedLocation || !selectedAssetType) {
+          return appAlert('Please select a Company, Location, and Asset Type.');
+        }
+      }
       const payload = {
-        company,
-        location,
-        assetType,
+        company:   hasContext ? company   : selectedCompany,
+        location:  hasContext ? location  : selectedLocation,
+        assetType: hasContext ? assetType : selectedAssetType,
         general: {
           stationId: ($('#mStationId')?.value || '').trim(),
           siteName:  ($('#mSiteName')?.value || '').trim(),
