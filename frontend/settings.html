@@ -1,0 +1,142 @@
+<div id="settingsPage" class="settings-view">
+  <div class="settings-header">
+    <h2 style="margin:0;font-size:1rem;">Settings</h2>
+  </div>
+
+  <div class="settings-body">
+    <div class="settings-tabs">
+      <button class="tab-btn active" data-tab="mapPin">Map Pin</button>
+      <button class="tab-btn" data-tab="stationInfo">Station Info</button>
+      <button class="tab-btn" data-tab="nuke">Nuke</button>
+    </div>
+
+    <div class="tab-panel" id="tab-mapPin" data-tab="mapPin" style="display:block;">
+      <p class="hint" style="opacity:.8;margin:.25rem 0 .5rem;">
+        Change the map pin color per <strong>Company ▸ Location ▸ Asset Type</strong>. Colors are saved to lookups.xlsx → <strong>AssetTypes</strong>.
+      </p>
+
+      <!-- Existing Map Pin table -->
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="width:25%;">Company</th>
+              <th style="width:25%;">Asset Type</th>
+              <th style="width:25%;">Location</th>
+              <th style="width:25%;">Color</th>
+            </tr>
+          </thead>
+          <tbody id="mapPinTbody"></tbody>
+        </table>
+      </div>
+
+      <!-- NEW: Status Overrides -->
+      <div class="settings-section" style="margin-top:1rem;">
+        <div class="settings-section-header" style="display:flex;align-items:center;gap:.75rem;justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:.75rem;">
+            <h3 style="margin:.25rem 0;">Status Overrides</h3>
+            <label style="display:flex;align-items:center;gap:.35rem;font-size:.9rem;">
+              <input id="applyStatusColorsChk" type="checkbox" />
+              <span>Apply status color overrides on map</span>
+            </label>
+          </div>
+          <div class="toolbar" style="display:flex;align-items:center;gap:.5rem;">
+            <button id="statusEditBtn" class="btn btn-ghost">Edit</button>
+            <button id="statusAddBtn" class="btn btn-primary" style="display:none;">Add row</button>
+          </div>
+        </div>
+        <p class="hint" style="opacity:.8;margin:.25rem 0 .5rem;">
+          Choose colors for statuses. When enabled, these override the normal station color for matching stations.
+          <strong>Active stations are not changed.</strong>
+        </p>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:50%;">Status</th>
+                <th style="width:40%;">Color</th>
+                <th style="width:10%;text-align:right;">&nbsp;</th>
+              </tr>
+            </thead>
+            <tbody id="statusColorTbody">
+              <!-- rows rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- NEW: Repair Colors (coming soon) -->
+      <div class="settings-section" style="margin-top:1rem;">
+        <div class="settings-section-header" style="display:flex;align-items:center;gap:.75rem;">
+          <h3 style="margin:.25rem 0;">Repair Colors</h3>
+          <label style="display:flex;align-items:center;gap:.35rem;font-size:.9rem;">
+            <input id="applyRepairColorsChk" type="checkbox" />
+            <span>Apply repair color scheme on map</span>
+          </label>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:25%;">Company</th>
+                <th style="width:25%;">Asset Type</th>
+                <th style="width:25%;">Location</th>
+                <th style="width:25%;">Repair Color</th>
+              </tr>
+            </thead>
+            <tbody id="repairColorTbody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Station Info Tab Panel (replaces Photo Links) -->
+    <div class="tab-panel" id="tab-stationInfo" data-tab="stationInfo" style="display:none;">
+      <p class="hint" style="opacity:.8;margin:.25rem 0 .5rem;">
+        Configure station-specific settings for this location.
+      </p>
+
+      <!-- Photo Links Section (existing functionality) -->
+      <div class="settings-section">
+        <h3>Photo Links</h3>
+        <p class="hint" style="opacity:.8;margin:.25rem 0 .5rem;">
+          Set photo folder locations for <strong>Locations</strong> and <strong>Asset Types</strong>. 
+          Asset Type links override Location links. Use UNC paths like: <code>\\server\share\folder</code>
+        </p>
+        <div class="link-settings-container">
+          <div class="link-tree" id="linkTree">
+            <!-- Dynamically populated by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Funding Type Override Settings Section (new) -->
+      <div class="settings-section" style="margin-top: 2rem;">
+        <h3>Funding Type Override Settings</h3>
+        <p class="hint" style="opacity:.8;margin:.25rem 0 .5rem;">
+          Set default funding type values at different levels. More specific settings override broader ones.
+          Values are saved to each location's Excel file.
+        </p>
+        <div class="funding-tree" id="fundingTree">
+          <!-- Dynamically populated similar to linkTree -->
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-nuke" data-tab="nuke" style="display:none;">
+      <p class="hint" style="opacity:.8;margin:.25rem 0 .5rem;">
+        Danger zone – use only for debugging.
+      </p>
+      <div id="nukeMount"></div>
+    </div>
+
+  </div>
+
+  <div class="settings-footer">
+    <button id="settingsSaveBtn" class="btn btn-primary">Save</button>
+    <button id="settingsCancelBtn" class="btn btn-ghost">Cancel</button>
+    <span id="settingsSaveStatus" class="hint" style="margin-left:.5rem;"></span>
+  </div>
+</div>

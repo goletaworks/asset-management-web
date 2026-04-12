@@ -1,0 +1,12 @@
+{
+  "database": {
+    "type": "mongodb",
+    "connectionString": "mongodb://root:%23luvM0ng0!@localhost:27017/?authSource=admin"
+  },
+  "read": {
+    "source": "excel"
+  },
+  "write": {
+    "targets": ["excel", "mongodb"]
+  }
+}

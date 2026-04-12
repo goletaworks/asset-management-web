@@ -1,0 +1,60 @@
+<!-- frontend/list.html -->
+<div id="listPage" class="list-view">
+  <div class="list-toolbar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
+    <h2 style="margin:0;font-size:1rem;">Stations</h2>
+    
+    <!-- Search stations controls - flexible and responsive -->
+    <div class="search-stations-controls">
+      <div class="search-stations">
+        <input type="text" placeholder="Search stations..." />
+        <button id="searchStationsButton" class="search-btn" type="button" title="Search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+        </button>
+        <button id="clearStationsButton" class="clear-btn" type="button" title="Clear search">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="temp-column-controls">
+        <input type="text" id="tempColumnInput" placeholder="Add field..." />
+        <button id="addTempColumnButton" class="action-btn" type="button" title="Add Column">Add</button>
+        <button id="clearTempColumnButton" class="clear-btn" type="button" title="Clear Extra Column" style="display: none;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+    </div>
+    
+    <div id="listCount" class="badge" style="display:none;"></div>
+  </div>
+
+  <div class="table-scroll">
+    <table id="stationTable" class="data-table">
+      <thead>
+        <tr>
+          <th>Station ID</th>
+          <th>Category</th>
+          <th>Site Name</th>
+          <th>Province</th>
+          <th>Latitude</th>
+          <th>Longitude</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <p class="hint" style="opacity:.75;margin-top:.5rem;">
+    Tip: Click a column header to sort. Hover a row to see quick details on the right. Press Enter or click the search button to search.
+  </p>
+</div>

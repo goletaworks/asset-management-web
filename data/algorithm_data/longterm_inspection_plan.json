@@ -1,0 +1,430 @@
+{
+  "plan_name": "Long-Term Inspection Plan",
+  "trips": [
+    {
+      "trip_name": "Campbell River",
+      "days": 4,
+      "stations": [
+        { "id": "08HD006", "transportation": "drive" },
+        { "id": "08HD007", "transportation": "drive" },
+        { "id": "08HC001", "transportation": "drive" },
+        { "id": "08HD018", "transportation": "drive" },
+        { "id": "08HD021", "transportation": "drive" },
+        { "id": "08HD035", "transportation": "drive" },
+        { "id": "08HD011", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "Williston Lake Trip 1",
+      "days": 4,
+      "stations": [
+        { "id": "07EB002", "transportation": "helicopter" },
+        { "id": "07EC003", "transportation": "helicopter" },
+        { "id": "07EC004", "transportation": "helicopter" },
+        { "id": "07EC002", "transportation": "helicopter" },
+        { "id": "07ED003", "transportation": "helicopter" },
+        { "id": "07EF004", "transportation": "helicopter" }
+      ]
+    },
+    {
+      "trip_name": "Kamloops Trip",
+      "days": 4,
+      "stations": [
+        { "id": "08LE027", "transportation": "drive" },
+        { "id": "08LE031", "transportation": "drive" },
+        { "id": "08LB076", "transportation": "drive" },
+        { "id": "08LA001", "transportation": "drive" },
+        { "id": "08LB064", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "South Island",
+      "days": 3,
+      "stations": [
+        { "id": "08HA010", "transportation": "drive" },
+        { "id": "08HA002", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "Pemberton Trip",
+      "days": 2,
+      "stations": [
+        { "id": "08MG026", "transportation": "drive" },
+        { "id": "08GA072", "transportation": "drive" },
+        { "id": "08ME027", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "Chilliwack",
+      "days": 1,
+      "stations": [
+        { "id": "08MH001", "transportation": "drive" },
+        { "id": "08MH056", "transportation": "drive" },
+        { "id": "08MH103", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "Capilano Watershed",
+      "days": 1,
+      "stations": [
+        { "id": "08GA010", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "Abbotsford Airport",
+      "days": 1,
+      "stations": [
+        { "id": "08MH147", "transportation": "helicopter" },
+        { "id": "08MF065", "transportation": "helicopter" }
+      ]
+    },
+    {
+      "trip_name": "Revelstoke - Golden",
+      "days": 5,
+      "stations": [
+        { "id": "08NB005", "transportation": "drive" },
+        { "id": "08NB012", "transportation": "drive" },
+        { "id": "08NB014", "transportation": "helicopter" },
+        { "id": "08ND012", "transportation": "drive" },
+        { "id": "08ND013", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "Terrace",
+      "days": 4,
+      "stations": [
+        { "id": "08ED001", "transportation": "helicopter" },
+        { "id": "08ED002", "transportation": "helicopter" },
+        { "id": "08CG001", "transportation": "helicopter" },
+        { "id": "08FE003", "transportation": "helicopter" },
+        { "id": "08JD006", "transportation": "helicopter" }
+      ]
+    },
+    {
+      "trip_name": "Merritt",
+      "days": 3,
+      "stations": [
+        { "id": "08LF051", "transportation": "drive" },
+        { "id": "08NL071", "transportation": "drive" },
+        { "id": "08LG065", "transportation": "drive" },
+        { "id": "08LG006", "transportation": "drive" },
+        { "id": "08LG008", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "Smithers",
+      "days": 3,
+      "stations": [
+        { "id": "08EE008", "transportation": "drive" },
+        { "id": "08EE020", "transportation": "drive" },
+        { "id": "08EF005", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "Nanaimo",
+      "days": 3,
+      "stations": [
+        { "id": "08HB034", "transportation": "drive" },
+        { "id": "08HB048", "transportation": "drive" },
+        { "id": "08HB014", "transportation": "drive" },
+        { "id": "08HB023", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "Courtenay",
+      "days": 2,
+      "stations": [
+        { "id": "08HB006", "transportation": "drive" },
+        { "id": "08HB011", "transportation": "drive" },
+        { "id": "08HB084", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "Squamish",
+      "days": 2,
+      "stations": [
+        { "id": "08GA022", "transportation": "drive" },
+        { "id": "08GA043", "transportation": "drive" },
+        { "id": "08GA071", "transportation": "drive" },
+        { "id": "08GA075", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "Clowhom",
+      "days": 1,
+      "stations": [
+        { "id": "08GB013", "transportation": "helicopter" }
+      ]
+    },
+    {
+      "trip_name": "Dawson City",
+      "days": 5,
+      "stations": [
+        { "id": "10MA003", "transportation": "helicopter" },
+        { "id": "09EA005", "transportation": "helicopter" },
+        { "id": "09EB003", "transportation": "helicopter" },
+        { "id": "09EB004", "transportation": "helicopter" },
+        { "id": "09FC001", "transportation": "helicopter" },
+        { "id": "09DD004", "transportation": "helicopter" }
+      ]
+    },
+    {
+      "trip_name": "Williston Lake Trip 2",
+      "days": 4,
+      "stations": [
+        { "id": "07EA004", "transportation": "helicopter" },
+        { "id": "07EA005", "transportation": "helicopter" },
+        { "id": "07EA007", "transportation": "helicopter" },
+        { "id": "07FA005", "transportation": "helicopter" },
+        { "id": "07FA006", "transportation": "helicopter" },
+        { "id": "07FC003", "transportation": "helicopter" }
+      ]
+    },
+    {
+      "trip_name": "Chetwynd",
+      "days": 4,
+      "stations": [
+        { "id": "07FB002", "transportation": "drive" },
+        { "id": "07FB003", "transportation": "drive" },
+        { "id": "07FB004", "transportation": "drive" },
+        { "id": "07FB006", "transportation": "drive" },
+        { "id": "07FB008", "transportation": "drive" },
+        { "id": "07FC001", "transportation": "drive" },
+        { "id": "07FD001", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "Penticton to Princeton",
+      "days": 4,
+      "stations": [
+        { "id": "08NM002", "transportation": "drive" },
+        { "id": "08NM050", "transportation": "drive" },
+        { "id": "08NM085", "transportation": "drive" },
+        { "id": "08NM171", "transportation": "drive" },
+        { "id": "08NL004", "transportation": "drive" },
+        { "id": "08NL069", "transportation": "drive" },
+        { "id": "08NL070", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "Whistler Trip",
+      "days": 3,
+      "stations": [
+        { "id": "08MA003", "transportation": "helicopter" },
+        { "id": "08MB006", "transportation": "helicopter" },
+        { "id": "08MB007", "transportation": "helicopter" },
+        { "id": "08ME023", "transportation": "helicopter" },
+        { "id": "08ME028", "transportation": "helicopter" }
+      ]
+    },
+    {
+      "trip_name": "Kelowna",
+      "days": 3,
+      "stations": [
+        { "id": "08NN015", "transportation": "drive" },
+        { "id": "08NN019", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "Port McNeill",
+      "days": 3,
+      "stations": [
+        { "id": "08HE006", "transportation": "drive" },
+        { "id": "08HF005", "transportation": "drive" },
+        { "id": "08HF014", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "Seymour Watershed",
+      "days": 1,
+      "stations": [
+        { "id": "08GA079", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "Haines Junction",
+      "days": 5,
+      "stations": [
+        { "id": "08AB001", "transportation": "helicopter" },
+        { "id": "08AC001", "transportation": "helicopter" },
+        { "id": "08AC002", "transportation": "helicopter" },
+        { "id": "08AA010", "transportation": "helicopter" },
+        { "id": "08AA011", "transportation": "helicopter" },
+        { "id": "09CB001", "transportation": "helicopter" },
+        { "id": "09CA004", "transportation": "helicopter" }
+      ]
+    },
+    {
+      "trip_name": "Prince George",
+      "days": 5,
+      "stations": [
+        { "id": "08EC004", "transportation": "drive" },
+        { "id": "08JA017", "transportation": "drive" },
+        { "id": "08KB003", "transportation": "helicopter" },
+        { "id": "08KB006", "transportation": "helicopter" },
+        { "id": "08KD007", "transportation": "helicopter" },
+        { "id": "07EE007", "transportation": "helicopter" },
+        { "id": "07EE009", "transportation": "helicopter" },
+        { "id": "07EE010", "transportation": "helicopter" }
+      ]
+    },
+    {
+      "trip_name": "Williams Lake",
+      "days": 5,
+      "stations": [
+        { "id": "08FB004", "transportation": "drive" },
+        { "id": "08FB006", "transportation": "drive" },
+        { "id": "08FB011", "transportation": "drive" },
+        { "id": "08KH010", "transportation": "drive" },
+        { "id": "08MA001", "transportation": "drive" },
+        { "id": "08MA002", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "Nelson",
+      "days": 5,
+      "stations": [
+        { "id": "08NH005", "transportation": "drive" },
+        { "id": "08NH007", "transportation": "drive" },
+        { "id": "08NH118", "transportation": "drive" },
+        { "id": "08NH119", "transportation": "drive" },
+        { "id": "08NH132", "transportation": "drive" },
+        { "id": "08NJ160", "transportation": "drive" },
+        { "id": "08NE006", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "Quesnel",
+      "days": 3,
+      "stations": [
+        { "id": "08KG001", "transportation": "helicopter" },
+        { "id": "08FC003", "transportation": "helicopter" }
+      ]
+    },
+    {
+      "trip_name": "Haida Gwaii",
+      "days": 3,
+      "stations": [
+        { "id": "08OA002", "transportation": "drive" },
+        { "id": "08OB002", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "Lillooet Trip",
+      "days": 2,
+      "stations": [
+        { "id": "08ME002", "transportation": "drive" },
+        { "id": "08ME003", "transportation": "drive" },
+        { "id": "08ME025", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "Coquitlam Watershed",
+      "days": 1,
+      "stations": [
+        { "id": "08MH141", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "Salmo Trip",
+      "days": 2,
+      "stations": [
+        { "id": "08NE074", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "Whitehorse",
+      "days": 4,
+      "stations": [
+        { "id": "09AA006", "transportation": "helicopter" },
+        { "id": "09AA012", "transportation": "helicopter" },
+        { "id": "09AA013", "transportation": "helicopter" },
+        { "id": "09AC007", "transportation": "drive" },
+        { "id": "09AE006", "transportation": "helicopter" },
+        { "id": "10AA005", "transportation": "helicopter" }
+      ]
+    },
+    {
+      "trip_name": "Fort Nelson",
+      "days": 5,
+      "stations": [
+        { "id": "10CA001", "transportation": "helicopter" },
+        { "id": "10CD003", "transportation": "drive" },
+        { "id": "10DB001", "transportation": "helicopter" },
+        { "id": "10BE004", "transportation": "helicopter" },
+        { "id": "10BE007", "transportation": "helicopter" },
+        { "id": "10BE013", "transportation": "helicopter" },
+        { "id": "10CB001", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "Dease Lake",
+      "days": 4,
+      "stations": [
+        { "id": "10AC005", "transportation": "helicopter" },
+        { "id": "08CD001", "transportation": "drive" },
+        { "id": "08CE001", "transportation": "drive" },
+        { "id": "08DA005", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "Cranbrook - Fernie",
+      "days": 4,
+      "stations": [
+        { "id": "08NG002", "transportation": "drive" },
+        { "id": "08NG065", "transportation": "drive" },
+        { "id": "08NK016", "transportation": "drive" },
+        { "id": "08NK018", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "Grand Forks to Vernon",
+      "days": 4,
+      "stations": [
+        { "id": "08LC003", "transportation": "drive" },
+        { "id": "08LC018", "transportation": "drive" },
+        { "id": "08NE110", "transportation": "drive" },
+        { "id": "08NN023", "transportation": "drive" },
+        { "id": "08NL038", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "McBride - Valemount",
+      "days": 3,
+      "stations": [
+        { "id": "08NC004", "transportation": "drive" },
+        { "id": "08KA001", "transportation": "drive" },
+        { "id": "08KA009", "transportation": "drive" },
+        { "id": "08KA013", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "North Island Helicopter",
+      "days": 3,
+      "stations": [
+        { "id": "08GE002", "transportation": "helicopter" },
+        { "id": "08HF004", "transportation": "helicopter" }
+      ]
+    },
+    {
+      "trip_name": "Hope",
+      "days": 1,
+      "stations": [
+        { "id": "08MG001", "transportation": "drive" },
+        { "id": "08MF068", "transportation": "drive" }
+      ]
+    },
+    {
+      "trip_name": "Carmacks",
+      "days": 4,
+      "stations": [
+        { "id": "09AH003", "transportation": "helicopter" },
+        { "id": "09AH004", "transportation": "drive" },
+        { "id": "09BA001", "transportation": "helicopter" },
+        { "id": "09BB001", "transportation": "helicopter" },
+        { "id": "09DA001", "transportation": "helicopter" },
+        { "id": "09CA006", "transportation": "helicopter" }
+      ]
+    }
+  ]
+}

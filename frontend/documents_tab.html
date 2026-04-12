@@ -1,0 +1,127 @@
+<!-- frontend/documents_tab.html -->
+<div class="documents-tab-container">
+  <!-- Header with breadcrumb and actions -->
+  <div class="documents-tab-header">
+    <div class="documents-breadcrumb" id="documentsBreadcrumb">
+      <span class="breadcrumb-item active" data-path="">Documents</span>
+    </div>
+    <div class="documents-actions">
+      <button id="addDocumentBtn" class="btn btn-primary btn-sm">
+        <span>📄</span>
+        Add Documents
+      </button>
+      <button id="createDocFolderBtn" class="btn btn-ghost btn-sm">
+        <span>📁</span>
+        New Folder
+      </button>
+    </div>
+  </div>
+
+  <!-- Search and filter bar -->
+  <div class="documents-search-bar">
+    <input type="text" id="documentSearchInput" class="documents-search-input" placeholder="Search documents..." />
+    <select id="documentTypeFilter" class="documents-filter-select">
+      <option value="">All Types</option>
+      <option value=".pdf">PDF</option>
+      <option value=".doc,.docx">Word</option>
+      <option value=".xls,.xlsx">Excel</option>
+      <option value=".ppt,.pptx">PowerPoint</option>
+      <option value=".txt">Text</option>
+      <option value=".zip,.rar,.7z">Archives</option>
+    </select>
+  </div>
+
+  <!-- Loading state -->
+  <div id="documentsLoading" class="documents-loading" style="display: none;">
+    <div class="spinner"></div>
+    <p>Loading documents...</p>
+  </div>
+
+  <!-- Empty state -->
+  <div id="documentsEmpty" class="documents-empty-state" style="display: none;">
+    <div class="empty-icon">📄</div>
+    <h3>No Documents Yet</h3>
+    <p>Add documents to get started</p>
+  </div>
+
+  <!-- Documents list -->
+  <div id="documentsList" class="documents-list">
+    <!-- Folders and documents will be rendered here -->
+  </div>
+</div>
+
+<!-- Add Documents Modal -->
+<div id="addDocumentModal" class="modal documents-modal" style="display: none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Add Documents</h3>
+      <button class="modal-close" data-modal="addDocumentModal">&times;</button>
+    </div>
+    <div class="modal-body">
+      <!-- Folder selection -->
+      <div class="form-group">
+        <label>Save to folder:</label>
+        <select id="documentFolderSelect" class="form-control">
+          <option value="">Root folder</option>
+        </select>
+      </div>
+
+      <!-- File input -->
+      <div class="form-group">
+        <label>Select documents:</label>
+        <input type="file" id="documentFileInput" multiple class="form-control" />
+        <small class="form-hint">Supported formats: PDF, Word, Excel, PowerPoint, Text, Archives</small>
+      </div>
+
+      <!-- Preview area -->
+      <div id="documentPreview" class="document-preview"></div>
+    </div>
+    <div class="modal-actions">
+      <button id="uploadDocumentsBtn" class="btn btn-primary" disabled>Upload Documents</button>
+      <button class="btn btn-ghost" data-modal="addDocumentModal">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create Folder Modal -->
+<div id="createDocFolderModal" class="modal documents-modal" style="display: none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Create New Folder</h3>
+      <button class="modal-close" data-modal="createDocFolderModal">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Parent folder:</label>
+        <select id="parentDocFolderSelect" class="form-control">
+          <option value="">Root folder</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Folder name:</label>
+        <input type="text" id="docFolderNameInput" class="form-control" placeholder="Enter folder name..." />
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button id="createDocFolderConfirmBtn" class="btn btn-primary">Create Folder</button>
+      <button class="btn btn-ghost" data-modal="createDocFolderModal">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Document Actions Menu (context menu) -->
+<div id="documentContextMenu" class="document-context-menu" style="display: none;">
+  <div class="context-menu-item" data-action="open">
+    <span class="context-menu-icon">📂</span>
+    <span>Open</span>
+  </div>
+  <div class="context-menu-item" data-action="reveal">
+    <span class="context-menu-icon">📁</span>
+    <span>Show in Folder</span>
+  </div>
+  <div class="context-menu-divider"></div>
+  <div class="context-menu-item context-menu-item--danger" data-action="delete">
+    <span class="context-menu-icon">🗑️</span>
+    <span>Delete</span>
+  </div>
+</div>

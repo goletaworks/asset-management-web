@@ -1,0 +1,200 @@
+<!-- frontend/dashboard.html -->
+<div id="statisticsPage" class="stats-view">
+  <header class="stats-header">
+    <h1>Dashboard</h1>
+    <p class="stats-subtitle">Infrastructure monitoring and analysis</p>
+  </header>
+
+  <div class="stats-tabs">
+    <button id="tabAnalytics" class="tab-button active" type="button">Analytics</button>
+    <button id="tabHistory" class="tab-button" type="button">Inspection/Project History</button>
+    <button id="tabRepairs" class="tab-button" type="button">Repairs and Maintenance</button>
+  </div>
+
+  <!-- ANALYTICS -->
+  <section id="analyticsTab" class="stats-tab">
+    <div class="analytics-hero">
+      <div>
+        <div class="eyebrow">Dynamic Analytics</div>
+        <div class="hero-title">Build the exact insights you need</div>
+        <p class="stats-subtitle">Use any dataset field and scope it with the sidebar filters (Company -> Location -> Asset Type).</p>
+      </div>
+      <div class="hero-chips">
+        <span class="chip">Real-time filters</span>
+        <span class="chip">Unlimited widgets</span>
+        <span class="chip">Bar / Pie / Ratio</span>
+      </div>
+    </div>
+
+    <div id="analyticsBuilder" class="analytics-builder">
+      <div class="builder-grid">
+        <div class="field-group">
+          <label for="anaField">Field</label>
+          <div class="search-select">
+            <input id="anaField" type="text" placeholder="Search any field" autocomplete="off" />
+          </div>
+        </div>
+        <div class="field-group">
+          <label for="anaVizType">Visualization</label>
+          <select id="anaVizType">
+            <option value="bar">Bar chart</option>
+            <option value="pie">Pie chart</option>
+            <option value="ratio">Ratio</option>
+            <option value="aggregate">Aggregate counts</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label for="anaCompany">Company filter</label>
+          <select id="anaCompany" data-placeholder="All companies"></select>
+        </div>
+        <div class="field-group">
+          <label for="anaLocation">Location filter</label>
+          <select id="anaLocation" data-placeholder="All locations"></select>
+        </div>
+        <div class="field-group">
+          <label for="anaAsset">Asset type filter</label>
+          <select id="anaAsset" data-placeholder="All asset types"></select>
+        </div>
+        <div class="field-group builder-action">
+          <button id="btnAddAnalytic" class="btn btn-primary">Add analytic</button>
+        </div>
+      </div>
+
+      <div id="ratioBuilder" class="builder-advanced" style="display:none;">
+        <div class="builder-row">
+          <div class="ratio-head">
+            <div class="title">Numerator filters</div>
+            <button id="btnAddNumerator" class="btn btn-ghost">+ Add filter</button>
+          </div>
+          <div id="ratioNumerators" class="numerator-list"></div>
+        </div>
+        <div class="builder-note">Denominator: # of stations matching the selected scope.</div>
+      </div>
+
+      <div id="aggregateBuilder" class="builder-advanced" style="display:none;">
+        <label for="aggGrouping">Group by</label>
+        <select id="aggGrouping"></select>
+        <div class="builder-note">Options are derived from the sidebar filters (company -> location -> asset type).</div>
+      </div>
+    </div>
+
+    <div id="analyticsGrid" class="stats-cards analytics-grid"><!-- dynamic cards --></div>
+  </section>
+
+  <!-- INSPECTION / PROJECT HISTORY -->
+  <section id="historyTab" class="stats-tab" style="display:none;">
+    <div class="history-toolbar">
+      <div class="history-actions">
+        <button id="btnHistoryAdd" class="btn">+ Add</button>
+        <div id="historyAddMenu" class="history-add-menu" style="display:none;">
+          <button id="historyAddInspection" type="button">Add Inspection</button>
+          <button id="historyAddProject" type="button">Add Project</button>
+        </div>
+        <button id="btnHistoryInspectionKeywords" class="btn btn-ghost" type="button">Inspection keywords</button>
+        <button id="btnHistoryProjectKeywords" class="btn btn-ghost" type="button">Project keywords</button>
+      </div>
+      <div class="history-filters">
+        <div class="form-row">
+          <label for="historyYear">Year</label>
+          <select id="historyYear">
+            <option value="">All years</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="historyCity">City of travel</label>
+          <select id="historyCity">
+            <option value="">All cities</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="historyField">Field filter</label>
+          <div class="search-select">
+            <input id="historyField" type="text" placeholder="Search any field" autocomplete="off" />
+          </div>
+        </div>
+        <div class="form-row">
+          <label for="historyFieldValue">Field value</label>
+          <select id="historyFieldValue" disabled>
+            <option value="">All values</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="historySort">Sort by</label>
+          <select id="historySort">
+            <option value="date_desc">Newest first</option>
+            <option value="date_asc">Oldest first</option>
+            <option value="year_desc">Year (high → low)</option>
+            <option value="year_asc">Year (low → high)</option>
+            <option value="city_asc">City A → Z</option>
+            <option value="city_desc">City Z → A</option>
+            <option value="station_asc">Station A → Z</option>
+            <option value="station_desc">Station Z → A</option>
+            <option value="field_asc">Field value A → Z</option>
+            <option value="field_desc">Field value Z → A</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div id="historyLoading" class="hint" style="display:none;">Loading inspection and project history…</div>
+    <div id="historyEmpty" class="empty" style="display:none;">No inspections or projects found.</div>
+
+    <div id="historyLists" class="history-grid">
+      <div class="history-column">
+        <div class="history-col-head">Inspections</div>
+        <div id="historyInspections" class="history-list"></div>
+        <div id="historyInspectionsPager" class="history-pagination"></div>
+      </div>
+      <div class="history-column">
+        <div class="history-col-head">Projects</div>
+        <div id="historyProjects" class="history-list"></div>
+        <div id="historyProjectsPager" class="history-pagination"></div>
+      </div>
+    </div>
+
+    <!-- PDF modals for previews -->
+    <div id="historyPdfModal" class="modal" style="display:none;">
+      <div class="modal-content" style="max-width:960px;width:92%;height:80vh;display:flex;flex-direction:column;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <h3 id="historyPdfTitle" style="margin:0;">Report</h3>
+          <button id="historyPdfClose" class="btn btn-ghost">Close</button>
+        </div>
+        <iframe id="historyPdfFrame" title="Report" style="flex:1;width:100%;border:1px solid var(--border);border-radius:8px;"></iframe>
+      </div>
+    </div>
+
+    <!-- Add modals -->
+    <div id="historyAddInspectionModal" class="modal" style="display:none;"></div>
+    <div id="historyAddProjectModal" class="modal" style="display:none;"></div>
+  </section>
+
+  <!-- REPAIRS AND MAINTENANCE -->
+  <section id="repairsTab" class="stats-tab" style="display:none;">
+    <div class="repairs-toolbar">
+      <button id="btnAddGlobalRepair" class="btn">+ Add Repair/Maintenance</button>
+      <button id="btnImportRepairs" class="btn">Import from Excel</button>
+      <button id="btnSelectAllRepairs" class="btn btn-secondary">Select All</button>
+      <button id="btnDeselectAllRepairs" class="btn btn-ghost">Deselect All</button>
+      <button id="btnResolveRepairs" class="btn btn-ghost">Resolve Selected</button>
+      <span id="repairsSelectionCount" class="hint" style="margin-left: auto;">0 selected</span>
+    </div>
+
+    <!-- Dynamic tables per Type (only "Repair" exists at first; others appear as added/imported) -->
+    <div id="globalTypeTables" class="repairs-tables"><!-- filled by JS --></div>
+
+    <!-- Add Repair Modal (defined in separate file) -->
+    <div id="globalRepairModal" class="modal" style="display:none;">
+      <!-- Content will be added by JS -->
+    </div>
+    <!-- Import Repairs Modal -->
+    <div id="importRepairsModal" class="modal" style="display:none;">
+      <!-- Content will be added by JS -->
+    </div>
+
+    <!-- Missing Fields Modal -->
+    <div id="missingFieldsModal" class="modal" style="display:none;">
+      <!-- Content will be added by JS -->
+    </div>
+
+  </section>
+</div>

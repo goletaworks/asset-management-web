@@ -1,0 +1,118 @@
+<!-- frontend/photo_tab.html -->
+<div class="photo-tab-container">
+  <!-- Header with breadcrumb and actions -->
+  <div class="photo-tab-header">
+    <div class="photo-breadcrumb" id="photoBreadcrumb">
+      <span class="breadcrumb-item active" data-path="">Root</span>
+    </div>
+    <div class="photo-actions">
+      <button id="addPhotoBtn" class="btn btn-primary btn-sm">
+        <span>📷</span>
+        Add Photos
+      </button>
+      <button id="createFolderBtn" class="btn btn-ghost btn-sm">
+        <span>📁</span>
+        New Folder
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading state -->
+  <div id="photoLoading" class="photo-loading" style="display: none;">
+    <div class="spinner"></div>
+    <p>Loading photos...</p>
+  </div>
+
+  <!-- Empty state -->
+  <div id="photoEmpty" class="photo-empty-state" style="display: none;">
+    <div class="empty-icon">📷</div>
+    <h3>No Photos Yet</h3>
+    <p>Add photos to get started</p>
+  </div>
+
+  <!-- Photo grid -->
+  <div id="photoGrid" class="photo-grid">
+    <!-- Folders will be rendered here -->
+    <div id="photoFolders" class="photo-folders"></div>
+    <!-- Images will be rendered here -->
+    <div id="photoImages" class="photo-images"></div>
+  </div>
+</div>
+
+<!-- Add Photos Modal -->
+<div id="addPhotoModal" class="modal photo-modal" style="display: none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Add Photos</h3>
+      <button class="modal-close" data-modal="addPhotoModal">&times;</button>
+    </div>
+    <div class="modal-body">
+      <!-- Folder selection -->
+      <div class="form-group">
+        <label>Save to folder:</label>
+        <select id="photoFolderSelect" class="form-control">
+          <option value="">Root folder</option>
+        </select>
+      </div>
+
+      <!-- File input -->
+      <div class="form-group">
+        <label>Select photos:</label>
+        <input type="file" id="photoFileInput" accept="image/*" multiple class="form-control" />
+        <small class="form-hint">Supported formats: JPG, PNG, GIF, WebP, BMP, TIFF</small>
+      </div>
+
+      <!-- Preview area -->
+      <div id="photoPreview" class="photo-preview"></div>
+    </div>
+    <div class="modal-actions">
+      <button id="uploadPhotosBtn" class="btn btn-primary" disabled>Upload Photos</button>
+      <button class="btn btn-ghost" data-modal="addPhotoModal">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create Folder Modal -->
+<div id="createFolderModal" class="modal photo-modal" style="display: none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Create New Folder</h3>
+      <button class="modal-close" data-modal="createFolderModal">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Parent folder:</label>
+        <select id="parentFolderSelect" class="form-control">
+          <option value="">Root folder</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Folder name:</label>
+        <input type="text" id="folderNameInput" class="form-control" placeholder="Enter folder name..." />
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button id="createFolderConfirmBtn" class="btn btn-primary">Create Folder</button>
+      <button class="btn btn-ghost" data-modal="createFolderModal">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Photo Viewer Modal -->
+<div id="photoViewerModal" class="modal photo-viewer-modal" style="display: none;">
+  <div class="photo-viewer-backdrop" data-modal="photoViewerModal"></div>
+  <div class="photo-viewer-content">
+    <button class="photo-viewer-close" data-modal="photoViewerModal">&times;</button>
+    <button class="photo-viewer-nav photo-viewer-prev" id="photoViewerPrev">‹</button>
+    <button class="photo-viewer-nav photo-viewer-next" id="photoViewerNext">›</button>
+    <div class="photo-viewer-image-container">
+      <img id="photoViewerImage" alt="Photo" />
+    </div>
+    <div class="photo-viewer-info">
+      <div class="photo-viewer-name" id="photoViewerName"></div>
+      <div class="photo-viewer-actions">
+        <button id="deletePhotoBtn" class="btn btn-danger btn-sm">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>

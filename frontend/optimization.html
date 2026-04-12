@@ -1,0 +1,565 @@
+<!-- frontend/optimization.html (UPDATED) -->
+<div id="dashboardContainer" class="asmgt-dashboard">
+
+  <!-- Workflow Mode Toggle (Top Right) -->
+  <div class="workflow-toggle-container">
+    <label class="workflow-toggle-label">
+      <span>Workflow Mode:</span>
+      <select id="workflowModeSelect" class="workflow-mode-select">
+        <option value="trip-first">Trip-First</option>
+        <option value="repair-first">Repair-First</option>
+        <option value="repair-first-dynamic">Repair-First (Dynamic)</option>
+      </select>
+    </label>
+    <button id="workflowModeInfoBtn" class="btn btn-ghost info-btn" title="What is this?" style="margin-left:0.5rem;">ℹ️</button>
+  </div>
+
+  <style>
+    .workflow-toggle-container { position:absolute; top:1rem; right:1rem; display:flex; align-items:center; gap:0.5rem; z-index:100; }
+    .workflow-toggle-label { display:flex; align-items:center; gap:0.5rem; font-weight:600; font-size:0.9rem; }
+    .workflow-mode-select { padding:0.4rem 0.6rem; border:1px solid #ccc; border-radius:6px; background:#fff; }
+  </style>
+
+  <div class="dashboard-tabs">
+    <button id="testTab" class="dashboard-tab" data-target="testMode" style="display:none;">TEST</button>
+    <button class="dashboard-tab active" data-target="softParameters">Soft Parameters</button>
+    <button class="dashboard-tab" data-target="fixedParameters">Fixed Parameters</button>
+    <button class="dashboard-tab" data-target="optimization1">Optimization 1</button>
+    <button class="dashboard-tab" data-target="optimization2">Optimization 2</button>
+    <button class="dashboard-tab" data-target="optimization3">Optimization 3</button>
+  </div>
+
+  <!-- 0) TEST MODE - Upload and override repair data -->
+  <div id="testMode" class="dashboard-content">
+    <div class="test-container">
+      <h2>TEST - Upload Test Repair Data</h2>
+      <p class="section-description">
+        Upload an Excel file with test repair data to override the normal repair data flow.
+        <br/>
+        <strong>Required columns:</strong> Repair Name, City of travel, Access Type, Coding, Funding Type, Priority, Cost
+        <br/>
+        <strong>Coding format:</strong> F, P, P(OTH), F-P, F-P-P(OTH) (split is always equal)
+      </p>
+
+      <div class="test-controls" style="margin-top: 1.5em;">
+        <div style="display:flex; gap:1em; align-items:center; margin-bottom:1em;">
+          <label style="display:flex; align-items:center; gap:0.5em; cursor:pointer; font-weight:600;">
+            <input type="checkbox" id="testModeToggle" style="cursor:pointer;"/>
+            <span>Enable TEST Mode</span>
+          </label>
+          <span id="testModeStatus" style="color:#999; font-size:0.9em;"></span>
+        </div>
+
+        <div style="display:flex; gap:0.5em; margin-bottom:1em;">
+          <button id="uploadTestDataBtn" class="btn btn-primary" disabled>Upload Excel File</button>
+          <button id="clearTestDataBtn" class="btn" disabled>Clear TEST Data</button>
+        </div>
+
+        <input type="file" id="testFileInput" accept=".xlsx,.xls" style="display:none;"/>
+      </div>
+
+      <div id="testDataPreview" style="margin-top:2em; display:none;">
+        <h3>Uploaded TEST Data</h3>
+        <div id="testDataInfo" style="margin:1em 0; padding:1em; background:#f0f7ff; border-radius:6px;">
+          <p><strong>Rows:</strong> <span id="testRowCount">0</span></p>
+          <p><strong>Columns:</strong> <span id="testColumnList"></span></p>
+        </div>
+        <div style="max-height:400px; overflow:auto; border:1px solid #ddd; border-radius:6px;">
+          <table id="testDataTable" class="data-table" style="width:100%; border-collapse:collapse;">
+            <thead id="testDataTableHead"></thead>
+            <tbody id="testDataTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 1) SOFT PARAMETERS (Optimization 1 - Scoring) -->
+  <div id="softParameters" class="dashboard-content active">
+    <div class="top-pane">
+      <h2>Soft Parameters - Scoring Weights</h2>
+      <p class="section-description">Define weighted parameters for ranking repairs. Parameters search across all fields in the location Excel file.</p>
+      <div id="paramContainer"></div>
+      <div class="actions">
+        <button id="addParamBtn" class="btn">+ Add Parameter</button>
+        <button id="saveParamsBtn" class="btn btn-primary">💾 Save Changes</button>
+      </div>
+    </div>
+
+    <hr class="separator"/>
+
+    <div class="bottom-pane">
+      <div id="percentageSection" style="margin-top:1em;">
+        <h3>Percentage Summary</h3>
+        <p>Total: <span id="percentageTotal">0</span>%</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2) FIXED PARAMETERS (Optimization 3 - Yearly Constraints) -->
+  <div id="fixedParameters" class="dashboard-content">
+    <div class="top-pane">
+      <h2>Fixed Parameters - Constraint Filtering</h2>
+      <p class="section-description">Define constraints to filter repairs. Repairs not meeting all constraints will be filtered out. Constraints search across all fields in the location Excel file.</p>
+      <div id="fixedParamContainer"></div>
+      <div class="actions">
+        <button id="addFixedParamBtn" class="btn">+ Add Fixed Parameter</button>
+        <button id="saveFixedParamsBtn" class="btn btn-primary">💾 Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3) OPTIMIZATION 1 - Scoring -->
+  <div id="optimization1" class="dashboard-content">
+    <div class="opt-container">
+      <h2>Optimization 1 - Repair Scoring</h2>
+      <p class="section-description">Score and rank all repairs using soft parameter weights.</p>
+      <button id="runOpt1Btn" class="btn btn-primary">Run Optimization 1</button>
+      
+      <div id="opt1Results" style="margin-top: 2em;"></div>
+    </div>
+  </div>
+
+  <!-- 4) OPTIMIZATION 2 - Trip Grouping -->
+  <div id="optimization2" class="dashboard-content">
+    <div class="opt-container">
+      <h2>Optimization 2 - Trip Grouping</h2>
+      <p id="opt2Description" class="section-description">
+        Group scored repairs by <strong>City of Travel</strong> and <strong>Access Type</strong>.
+        <br/>
+        <strong>⚠️ Note:</strong> You must run <em>Optimization 1</em> first
+      </p>
+      <div class="opt2-controls">
+        <label for="tripPriorityMode" class="opt2-label">Trip Priority:</label>
+        <select id="tripPriorityMode" class="opt2-select">
+          <option value="tripmean" selected>TripMean (average of repair scores)</option>
+          <option value="tripmax">TripMax (max repair score)</option>
+        </select>
+        <button id="tripModeInfoBtn" class="btn btn-ghost info-btn" title="What is this?">ℹ️</button>
+        <button id="runOpt2Btn" class="btn btn-primary">Run Optimization 2</button>
+      </div>
+      
+      <div id="opt2Results" style="margin-top: 2em;"></div>
+    </div>
+  </div>
+
+  <!-- 5) OPTIMIZATION 3 - Yearly Assignment -->
+  <div id="optimization3" class="dashboard-content">
+    <div class="opt-container">
+      <h2>Optimization 3 - Yearly Assignment</h2>
+      <p id="opt3Description" class="section-description">
+        Assign trips to years based on fixed parameter constraints.
+        <br/>
+        <strong>⚠️ Note:</strong> You must run Optimizations 1 and 2 first.
+      </p>
+      <div class="opt3-controls">
+        <label for="opt3TopPercent" class="opt3-label">Top-X% warning threshold:</label>
+        <input type="number" id="opt3TopPercent" class="opt3-input" value="0" min="0" max="100" step="1" />
+        <button id="opt3TopInfoBtn" class="btn btn-ghost info-btn" title="What is this?">ℹ️</button>
+      </div>
+      <style>
+        .opt3-controls { display: flex; gap: 0.5rem; align-items: center; margin: 0.5rem 0 1rem 0; }
+      </style>
+      <button id="runOpt3Btn" class="btn btn-primary">Run Optimization 3</button>
+      
+      <div id="opt3Results" style="margin-top: 2em;"></div>
+    </div>
+  </div>
+
+  <!-- Add Soft Parameter Modal -->
+  <div id="addParamModal" class="modal" style="display:none;">
+    <div class="modal-content" style="width:400px; max-width:90%;">
+      <span class="close-modal" id="closeAddParamModal">&times;</span>
+      <h2 class="modal-header">Add Soft Parameter</h2>
+
+      <div style="margin-top:1em;">
+        <label>Parameter Name (Field Name)</label><br/>
+        <input type="text" id="paramNameInput" placeholder="Start typing to see suggestions..." style="width:100%; padding:0.5em;"/>
+      </div>
+
+      <div style="margin-top:1em;">
+        <label>Max Weight (1–Y)</label><br/>
+        <input type="number" id="paramMaxWeight" min="1" value="3" style="width:100%; padding:0.5em;"/>
+      </div>
+
+      <div id="optionsContainer" style="margin-top:1em;">
+        <h3>Options → Weight</h3>
+        <button type="button" id="addOptionBtn" class="btn" style="margin-bottom:0.5em;">+ Add Option</button>
+        <div id="optionsList"></div>
+      </div>
+
+      <div style="margin-top:1.5em; text-align:right;">
+        <button id="saveParamBtn" class="btn btn-primary">Save Parameter</button>
+        <button id="cancelParamBtn" class="btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Fixed Parameter Modal -->
+  <div id="addFixedParamModal" class="modal" style="display:none;">
+    <div class="modal-content" style="width:500px; max-width:90%;">
+      <span class="close-modal" id="closeAddFixedParamModal">&times;</span>
+      <h2 class="modal-header">Add Fixed Parameter</h2>
+
+      <!-- Step Indicator -->
+      <div id="stepIndicator" style="display:flex; justify-content:center; gap:0.5rem; margin:1rem 0; font-size:0.85rem;">
+        <span class="step-dot active" data-step="1">1</span>
+        <span class="step-dot" data-step="2">2</span>
+        <span class="step-dot" data-step="3">3</span>
+      </div>
+
+      <!-- STEP 1: Select Constraint Type -->
+      <div id="step1Container" class="step-container">
+        <h3 style="margin:0 0 1em 0; color:#666;">Step 1: Select Constraint Type</h3>
+        <label>Constraint Type</label><br/>
+        <select id="fixedParamTypeSelect" style="width:100%; padding:0.5em;">
+          <option value="geographical">Geographical</option>
+          <option value="temporal">Temporal</option>
+          <option value="monetary">Monetary</option>
+          <option value="design">Design</option>
+        </select>
+        <button id="step1NextBtn" class="btn btn-primary" style="margin-top:1.5em; width:100%;">Next →</button>
+      </div>
+
+      <!-- STEP 2: Type-Specific Configuration -->
+      <div id="step2Container" class="step-container" style="display:none;">
+        <h3 style="margin:0 0 1em 0; color:#666;" id="step2Title">Step 2: Configure Constraint</h3>
+
+        <!-- Monetary: Match Using (appears first for monetary only) -->
+        <div id="monetaryMatchUsing" style="display:none; margin-bottom:1.5em;">
+          <label>Match Using</label><br/>
+          <select id="fixedParamMatchUsing" style="width:100%; padding:0.5em;">
+            <option value="parameter_name">Fixed Parameter Name</option>
+            <option value="field_name">Field Name</option>
+          </select>
+          <p style="font-size:0.85em; color:#666; margin-top:0.3em;">
+            Choose how to match repairs: by the fixed parameter name or by a specific field in the data.
+          </p>
+        </div>
+
+        <!-- Common: Parameter Name (for all except monetary in first sub-step) -->
+        <div id="parameterNameContainer" style="margin-bottom:1em;">
+          <label>Fixed Parameter Name</label><br/>
+          <input type="text" id="fixedParamNameInput" placeholder="Start typing to see suggestions..." style="width:100%; padding:0.5em;"/>
+        </div>
+
+      <!-- Geographical Fields -->
+      <div id="geographicalFields" class="constraint-fields" style="display:none;">
+        <label>Allowed Values</label>
+        <div id="geoValuesList" style="margin-top:0.5em;"></div>
+        <button type="button" id="addGeoValueBtn" class="btn" style="margin-top:0.5em;">+ Add Value</button>
+      </div>
+
+      <!-- Temporal Fields -->
+      <div id="temporalFields" class="constraint-fields" style="display:none;">
+        <div style="margin-bottom:0.5em;">
+          <label>Scope</label><br/>
+          <select id="temporalScope" style="width:100%; padding:0.5em;">
+            <option value="per_day">Per Day</option>
+            <option value="per_week">Per Week</option>
+            <option value="per_month">Per Month</option>
+            <option value="per_year">Per Year</option>
+          </select>
+        </div>
+        <div style="margin-bottom:0.5em;">
+          <label>Value</label><br/>
+          <input type="number" id="temporalValue" placeholder="Enter value" style="width:100%; padding:0.5em;"/>
+        </div>
+        <div>
+          <label>Unit</label><br/>
+          <select id="temporalUnit" style="width:100%; padding:0.5em;">
+            <option value="hours">Hours</option>
+            <option value="days">Days</option>
+            <option value="weeks">Weeks</option>
+            <option value="months">Months</option>
+            <option value="years">Years</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Monetary Fields -->
+      <div id="monetaryFields" class="constraint-fields" style="display:none;">
+        <div style="margin-bottom:0.5em;">
+          <label>Field Name</label><br/>
+          <input type="text" id="monetaryFieldName" placeholder="Start typing to see suggestions..." style="width:100%; padding:0.5em;"/>
+        </div>
+        <div style="margin-bottom:0.5em;">
+          <label>Conditional</label><br/>
+          <select id="monetaryConditional" style="width:100%; padding:0.5em;">
+            <option value="<">Less than (<)</option>
+            <option value="<=">Less than or equal (<=)</option>
+            <option value=">">Greater than (>)</option>
+            <option value=">=">Greater than or equal (>=)</option>
+            <option value="=">Equal (=)</option>
+            <option value="!=">Not equal (!=)</option>
+          </select>
+        </div>
+        <div style="margin-bottom:0.5em;">
+          <label>Value ($)</label><br/>
+          <input type="number" id="monetaryValue" placeholder="Enter numeric value" style="width:100%; padding:0.5em;"/>
+        </div>
+      </div>
+
+      <!-- Design Fields -->
+      <div id="designFields" class="constraint-fields" style="display:none;">
+        <div style="margin-bottom:0.5em;">
+          <label>Operator</label><br/>
+          <select id="designOperator" style="width:100%; padding:0.5em;">
+            <option value="=">=  (equals)</option>
+            <option value="!=">!= (not equals)</option>
+            <option value="contains">contains</option>
+            <option value="<">&lt;  (less than)</option>
+            <option value="<=">&le; (less than or equal)</option>
+            <option value=">">&gt;  (greater than)</option>
+            <option value=">=">&ge; (greater than or equal)</option>
+          </select>
+        </div>
+        <div>
+          <label>Value</label><br/>
+          <input type="text" id="designValue" placeholder="e.g., Approved, 3, 2024-06" style="width:100%; padding:0.5em;"/>
+        </div>
+        <p style="font-size:0.85em; color:#666; margin-top:0.5em;">
+          Stations failing this check for the selected year will be removed from assignment output.
+        </p>
+      </div>
+
+        <div style="margin-top:1.5em; display:flex; gap:0.5rem;">
+          <button id="step2BackBtn" class="btn" style="flex:1;">← Back</button>
+          <button id="step2NextBtn" class="btn btn-primary" style="flex:1;">Next →</button>
+        </div>
+      </div>
+
+      <!-- STEP 3: Advanced Options -->
+      <div id="step3Container" class="step-container" style="display:none;">
+        <h3 style="margin:0 0 1em 0; color:#666;">Step 3: Advanced Options</h3>
+
+        <!-- Cumulative Checkbox (for Temporal and Monetary only) -->
+        <div id="cumulativeContainer" style="display:none; margin-bottom:1.5em; padding:1em; background:#f0f7ff; border-radius:6px; border:1px solid #d0e7ff;">
+          <label style="display:flex; align-items:center; gap:0.5em; cursor:pointer; font-weight:600;">
+            <input type="checkbox" id="cumulativeCheckbox" style="cursor:pointer;"/>
+            <span id="cumulativeLabel">Cumulative</span>
+          </label>
+          <p id="cumulativeExplanation" style="font-size:0.85em; color:#555; margin:0.5em 0 0 1.8em; line-height:1.4;">
+          </p>
+        </div>
+
+        <!-- SPLIT Condition Section (Monetary only) -->
+        <div id="splitSection" style="display:none; margin-bottom:1.5em;">
+          <div style="padding:1em; background:#fff9e6; border-radius:6px; border:1px solid #ffe7a3;">
+            <label style="display:flex; align-items:center; gap:0.5em; cursor:pointer; font-weight:600;">
+              <input type="checkbox" id="enableSplitCondition" style="cursor:pointer;"/>
+              <span>Add SPLIT Condition (Optional)</span>
+            </label>
+            <p style="font-size:0.85em; color:#555; margin:0.5em 0 0 1.8em; line-height:1.4;">
+              Split the monetary value by source tokens from O&M, Capital, or Decommission columns.
+            </p>
+            <div id="splitFields" style="display:none; margin-top:1em;">
+              <label style="font-size:0.9em; font-weight:600;">Sources</label>
+              <div style="font-size:0.85em; color:#666; margin:0.3em 0 0.5em 0;">
+                Enter source tokens (e.g., F, P, P(OTH), P(BCH))
+              </div>
+              <!-- Rows injected by JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- IF Condition Section (all types) -->
+        <div id="ifSection" style="margin-bottom:1.5em;">
+          <div style="padding:1em; background:#fff3cd; border-radius:6px; border:1px solid #ffc107;">
+            <label style="display:flex; align-items:center; gap:0.5em; cursor:pointer; font-weight:600;">
+              <input type="checkbox" id="enableIfCondition" style="cursor:pointer;"/>
+              <span>Add IF Condition (Optional)</span>
+            </label>
+            <p style="font-size:0.85em; color:#555; margin:0.5em 0 0 1.8em; line-height:1.4;">
+              Only apply this constraint when a specific condition is met.
+            </p>
+            <div id="ifConditionFields" style="display:none; margin-top:1em;">
+              <div style="margin-bottom:0.5em;">
+                <label>Field Name</label><br/>
+                <input type="text" id="ifFieldName" placeholder="Start typing to see suggestions..." style="width:100%; padding:0.5em;"/>
+              </div>
+              <div style="margin-bottom:0.5em;">
+                <label>Operator</label><br/>
+                <select id="ifOperator" style="width:100%; padding:0.5em;">
+                  <option value="=">=  (equals)</option>
+                  <option value="!=">!= (not equals)</option>
+                  <option value="contains">contains</option>
+                </select>
+              </div>
+              <div>
+                <label>Value</label><br/>
+                <input type="text" id="ifValue" placeholder="e.g., O&M, Capital" style="width:100%; padding:0.5em;"/>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:1.5em; display:flex; gap:0.5rem;">
+          <button id="step3BackBtn" class="btn" style="flex:1;">← Back</button>
+          <button id="saveFixedParamBtn" class="btn btn-primary" style="flex:2;">Save Fixed Parameter</button>
+        </div>
+
+      </div>
+
+      <!-- Cancel button (always visible) -->
+      <div style="margin-top:1em; text-align:center;">
+        <button id="cancelFixedParamBtn" class="btn" style="background:transparent; border:none; color:#666;">Cancel</button>
+      </div>
+
+    </div>
+  </div>
+
+  <style>
+    .step-container {
+      min-height: 300px;
+    }
+    .step-dot {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #e0e0e0;
+      color: #999;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+    .step-dot.active {
+      background: #3c78d8;
+      color: white;
+      transform: scale(1.1);
+    }
+    .step-dot.completed {
+      background: #5cb85c;
+      color: white;
+    }
+  </style>
+  
+  <!-- Add Year Modal -->
+  <div id="addYearModal" class="modal" style="display:none;">
+    <div class="modal-content" style="width:300px; max-width:90%;">
+      <span class="close-modal" id="closeAddYearModal">&times;</span>
+      <h2 class="modal-header">Add Year</h2>
+      
+      <div style="margin-top:1em;">
+        <label>Enter Year</label><br/>
+        <input type="number" id="yearInput" placeholder="e.g., 2025" min="2020" max="2100" 
+               style="width:100%; padding:0.5em;"/>
+      </div>
+      
+      <div style="margin-top:1.5em; text-align:right;">
+        <button id="confirmAddYearBtn" class="btn btn-primary">Add Year</button>
+        <button id="cancelAddYearBtn" class="btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Trip Mode Info Modal -->
+<div id="tripModeInfoModal" class="modal" style="display:none;">
+  <div class="modal-content" style="width:520px; max-width:90%;">
+    <span class="close-modal" id="closeTripModeInfoModal">&times;</span>
+    <h2 class="modal-header">Trip Priority Modes</h2>
+    <div style="margin-top:0.6em; line-height:1.5;">
+      <p><strong>TripMean</strong>: For each trip, compute the arithmetic mean of the Optimization&nbsp;1 repair scores in that trip. Trips are ordered by this mean (higher first).</p>
+      <p><strong>TripMax</strong>: For each trip, take the maximum Optimization&nbsp;1 repair score in that trip. Trips are ordered by this maximum (higher first).</p>
+    </div>
+    <div style="margin-top:1em; text-align:right;">
+      <button id="okTripModeInfoBtn" class="btn btn-primary">OK</button>
+    </div>
+  </div>
+  <style>
+    /* lightweight styles for the selector row and info button */
+    .opt2-controls {
+      display:flex;
+      gap:0.6rem;
+      align-items:center;
+      flex-wrap:wrap;
+      margin: .5rem 0 1rem 0;
+    }
+    .opt2-label { font-weight:600; }
+    .opt2-select {
+      padding:.45rem .6rem;
+      border:1px solid #ccc;
+      border-radius:6px;
+      background:#fff;
+    }
+    .btn-ghost.info-btn {
+      border:1px solid #ddd;
+      background:#fff;
+      padding:.35rem .55rem;
+      border-radius:6px;
+      cursor:pointer;
+    }
+    .btn-ghost.info-btn:hover { background:#f7f7f7; }
+    /* Slightly larger chips for visibility */
+    .opt-trip .trip-summary .chip.chip-remaining {
+      font-size: .95rem;
+      padding: .35rem .55rem;
+    }
+  </style>
+</div>
+
+<!-- Opt-3 Top-X% Info Modal -->
+<div id="opt3TopInfoModal" class="modal" style="display:none;">
+  <div class="modal-content" style="width:520px; max-width:90%;">
+    <span class="close-modal" id="closeOpt3TopInfoModal">&times;</span>
+    <h2 class="modal-header" id="opt3TopInfoTitle">Info</h2>
+    <div style="margin-top:.6em; line-height:1.5;">
+      <div id="opt3TopInfoContent"></div>
+    </div>
+    <div style="margin-top:1em; text-align:right;">
+      <button id="okOpt3TopInfoBtn" class="btn btn-primary">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- Workflow Mode Info Modal -->
+<div id="workflowModeInfoModal" class="modal" style="display:none;">
+  <div class="modal-content" style="width:600px; max-width:90%;">
+    <span class="close-modal" id="closeWorkflowModeInfoModal">&times;</span>
+    <h2 class="modal-header">Workflow Mode Comparison</h2>
+    <div style="margin-top:1em; line-height:1.6;">
+      
+      <div style="margin-bottom:1.5em; padding:1em; background:#f0f7ff; border-radius:6px;">
+        <h3 style="margin:0 0 0.5em 0; color:#3c78d8;">Trip-First</h3>
+        <p style="margin:0;"><strong>Flow:</strong> Opt 1 → Opt 2 → Opt 3</p>
+        <p style="margin:0.5em 0 0 0;">Groups repairs into trips first, then assigns whole trips to years. Keeps trips together but may defer high-priority repairs if their trip doesn't fit in Year 1.</p>
+        <ul style="margin:0.5em 0 0 1.5em; padding:0;">
+          <li>✓ Better resource utilization</li>
+          <li>✓ Fewer total trips</li>
+          <li>⚠️ High-priority repairs may be deferred with their trip</li>
+        </ul>
+      </div>
+
+      <div style="margin-bottom:1.5em; padding:1em; background:#fff9e6; border-radius:6px;">
+        <h3 style="margin:0 0 0.5em 0; color:#f0ad4e;">Repair-First</h3>
+        <p style="margin:0;"><strong>Flow:</strong> Opt 1 → Opt 3 → Opt 2</p>
+        <p style="margin:0.5em 0 0 0;">Assigns individual repairs to years by priority score first, then groups into trips within each year. Maximizes early placement of high-priority work.</p>
+        <ul style="margin:0.5em 0 0 1.5em; padding:0;">
+          <li>✓ Highest-priority tasks are finished ASAP</li>
+          <li>⚠️ May split logical trips across years</li>
+        </ul>
+      </div>
+
+      <div style="margin-bottom:1.5em; padding:1em; background:#e8f5e9; border-radius:6px;">
+        <h3 style="margin:0 0 0.5em 0; color:#4caf50;">Repair-First (Dynamic)</h3>
+        <p style="margin:0;"><strong>Flow:</strong> Opt 1 (with deadlines) → Opt 3 (smart) → Opt 2</p>
+        <p style="margin:0.5em 0 0 0;">Intelligently assigns repairs considering user-defined deadlines, location consolidation opportunities, and priority scores. Set "Must Finish By" deadlines in Optimization 1 table.</p>
+        <ul style="margin:0.5em 0 0 1.5em; padding:0;">
+          <li>✓ Respects hard deadlines (errors if can't fit)</li>
+          <li>✓ Consolidates trips when possible to save money</li>
+          <li>✓ Prioritizes sooner deadlines over later ones</li>
+          <li>⚠️ May defer no-deadline repairs for better location matches</li>
+        </ul>
+      </div>
+
+      <p style="margin-top:1em; font-size:0.9em; color:#666;"><strong>Tip:</strong> Try all three modes and compare results to see which fits your planning needs better.</p>
+    </div>
+    <div style="margin-top:1em; text-align:right;">
+      <button id="okWorkflowModeInfoBtn" class="btn btn-primary">OK</button>
+    </div>
+  </div>
+</div>

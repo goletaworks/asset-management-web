@@ -1,0 +1,151 @@
+<!-- frontend/add_infra.html -->
+<div id="addInfraPage" class="wizard-container">
+  <div class="wizard-header">
+    <ul class="wizard-steps" id="wizSteps">
+      <li class="step active"><span class="step-dot">1</span><span>Create Company</span></li>
+      <li class="step"><span class="step-dot">2</span><span>Create Project</span></li>
+      <li class="step"><span class="step-dot">3</span><span>Create Assets</span></li>
+      <li class="step"><span class="step-dot">4</span><span>Select data</span></li>
+    </ul>
+  </div>
+
+  <div class="wizard-body">
+    <!-- STEP 1: Company (new OR existing) -->
+    <form class="wizard-step active" id="stepCompany" novalidate>
+      <h3>Company</h3>
+
+      <div class="form-row">
+        <label>Mode</label>
+        <div class="segmented">
+          <label class="seg"><input type="radio" name="coMode" id="coModeExisting"> Use existing</label>
+          <label class="seg"><input type="radio" name="coMode" id="coModeNew" checked> Create new</label>
+        </div>
+      </div>
+
+      <div class="form-row" id="rowCompanySelect" style="display:none;">
+        <label>Select company</label>
+        <select id="companySelect">
+          <option value="" selected disabled>Loading companies…</option>
+        </select>
+      </div>
+
+      <div class="form-row" id="rowCompanyName">
+        <label>Company Name*</label>
+        <input type="text" id="companyName" placeholder="Company name..." />
+      </div>
+
+      <div class="form-row new-only">
+        <label>Company Description</label>
+        <textarea id="companyDesc" rows="6" placeholder=""></textarea>
+      </div>
+      <div class="form-row new-only">
+        <label>Company Email*</label>
+        <input type="email" id="companyEmail" placeholder="" />
+      </div>
+    </form>
+
+    <!-- STEP 2: Location (new OR existing) -->
+    <form class="wizard-step" id="stepProject" novalidate>
+      <h3>Location</h3>
+
+      <div class="form-row">
+        <label>Mode</label>
+        <div class="segmented">
+          <label class="seg"><input type="radio" name="locMode" id="locModeExisting"> Use existing</label>
+          <label class="seg"><input type="radio" name="locMode" id="locModeNew" checked> Create new</label>
+        </div>
+      </div>
+
+      <div class="form-row" id="rowLocationSelect" style="display:none;">
+        <label>Select location (under chosen company)</label>
+        <select id="locationSelect" disabled>
+          <option value="" selected disabled>Select a company first</option>
+        </select>
+      </div>
+
+      <div class="form-row" id="rowLocationName">
+        <label>Location</label>
+        <input type="text" id="projectName" placeholder="Location..." />
+      </div>
+
+      <div class="form-row">
+        <label>Excel File</label>
+        <div class="filepicker">
+          <input type="file" id="projectExcel" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+          <span id="projectExcelLabel">Select Excel File</span>
+        </div>
+      </div>
+    </form>
+
+    <!-- STEP 3: Asset Type (new OR existing) -->
+    <form class="wizard-step" id="stepAssets" novalidate>
+      <h3>Asset Type</h3>
+
+      <div class="card">
+        <div class="card-title">Asset Creation Method</div>
+        <div class="checklist">
+          <label class="chk">
+            <input type="checkbox" id="methodManual" />
+            <span>Manual Creation</span>
+          </label>
+          <label class="chk">
+            <input type="checkbox" id="methodImport" checked />
+            <span>Import from Sheet</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label>Mode</label>
+        <div class="segmented">
+          <label class="seg"><input type="radio" name="atMode" id="atModeExisting"> Use existing</label>
+          <label class="seg"><input type="radio" name="atMode" id="atModeNew" checked> Create new</label>
+        </div>
+      </div>
+
+      <div class="form-row" id="rowAssetTypeSelect" style="display:none;">
+        <label>Select asset type (under chosen location)</label>
+        <select id="assetTypeSelect" disabled>
+          <option value="" selected disabled>Select a location first</option>
+        </select>
+      </div>
+
+      <div class="form-row" id="rowAssetName">
+        <label>Asset Name*</label>
+        <input type="text" id="assetName" placeholder="Enter asset name" />
+      </div>
+
+      <div class="form-row">
+        <label>Select sheet</label>
+        <select id="sheetSelect" disabled>
+          <option>Select Excel file in previous step</option>
+        </select>
+      </div>
+    </form>
+
+    <!-- STEP 4: Select data -->
+    <div class="wizard-step" id="stepSelectData">
+      <h3>Select data</h3>
+      <div class="table-toolbar">
+        <div>
+          <button id="btnSelectAllRows" class="btn btn-ghost">Select all</button>
+          <button id="btnDeselectAllRows" class="btn btn-ghost">Deselect all</button>
+        </div>
+        <div id="rowCountBadge" class="badge">0 selected</div>
+      </div>
+      <div class="table-scroll">
+        <table id="sheetPreviewTable" class="data-table">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="hint">Tip: columns mirror your Excel sheet; only selected rows will be imported.</p>
+    </div>
+  </div>
+
+  <div class="wizard-footer">
+    <button id="wizBack" class="btn btn-ghost" disabled>BACK</button>
+    <button id="wizCancel" class="btn btn-ghost">CANCEL</button>
+    <button id="wizNext" class="btn btn-primary">NEXT</button>
+  </div>
+</div>

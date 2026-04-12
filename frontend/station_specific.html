@@ -1,0 +1,87 @@
+<!-- frontend/station_specific.html -->
+<div id="stationPage" class="detail-page">
+  <button id="backButton" class="btn btn-ghost">&larr; Back to Main View</button>
+  <h1 id="stationTitle" class="page-title">STATION NAME (ID)</h1>
+
+  <!-- status + type pills -->
+  <div class="meta-row">
+    <span id="statusPill" class="pill">Status</span>
+    <span id="typePill" class="pill pill--muted">Type</span>
+  </div>
+
+  <!-- tabs (unchanged wiring) -->
+  <div class="tabs">
+    <button class="tab active" data-target="overview">Overview</button>
+    <button class="tab" data-target="inspection-history">Inspection History</button>
+    <button class="tab" data-target="project-history">Project History</button>
+    <button class="tab" data-target="repairs">Repairs</button>
+    <button class="tab" data-target="documents">Documents</button>
+    <button class="tab" data-target="photos">Photos</button>
+  </div>
+
+  <div id="overview" class="tab-content active">
+    <!-- General Information (locked editing) -->
+    <div class="station-section gi-section" id="giSection">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h3>General Information</h3>
+        <button id="unlockEditing" class="btn btn-ghost">🔒 Unlock Editing</button>
+      </div>
+      <table id="giTable">
+        <tr><th>Station ID:</th> <td><input id="giStationId" type="text" disabled /></td></tr>
+        <tr><th>Category:</th>   <td><input id="giCategory"  type="text" disabled /></td></tr>
+        <tr><th>Site Name:</th>  <td><input id="giSiteName"  type="text" disabled /></td></tr>
+        <tr><th>Province:</th>   <td><input id="giProvince"  type="text" disabled /></td></tr>
+        <tr><th>Latitude:</th>   <td><input id="giLatitude"  type="number" step="any" disabled /></td></tr>
+        <tr><th>Longitude:</th>  <td><input id="giLongitude" type="number" step="any" disabled /></td></tr>
+        <tr data-gi-anchor="status">
+          <th>Status:</th>
+          <td>
+            <select id="giStatus" disabled>
+              <option>Active</option>
+              <option>Inactive</option>
+              <option>Mothballed</option>
+              <option>Unknown</option>
+            </select>
+          </td>
+        </tr>
+        <!-- Extra General Information fields will be appended here by station.js -->
+      </table>
+    </div>
+
+    <!-- Photos strip (placeholder only for now) -->
+    <div class="card photos-card">
+      <h3>Recent Photos</h3>
+      <div class="photo-row" id="photosRow"></div>
+    </div>
+
+    <!-- Dynamic Sections Container -->
+    <div id="dynamicSections"></div>
+
+    <!-- Add Section Button -->
+    <div class="main-actions">
+      <button id="addSectionBtn" class="btn btn-primary">
+        <span>+</span>
+        Add Section
+      </button>
+      <button id="saveChangesBtn" class="btn">
+        Save Changes
+      </button>
+    </div>
+  </div>
+
+  <div id="inspection-history" class="tab-content"></div>
+  <div id="project-history" class="tab-content"></div>
+  <div id="repairs" class="tab-content"></div>
+  <div id="documents" class="tab-content"></div>
+  <div id="photos" class="tab-content"></div>
+</div>
+
+<!-- Photo Lightbox (hidden by default) -->
+<div id="photoLightbox" class="photo-lightbox" aria-hidden="true">
+  <div class="photo-lightbox__backdrop" data-close></div>
+  <figure class="photo-lightbox__content">
+    <img id="lightboxImg" alt="Station photo" />
+    <button id="lightboxClose" class="photo-lightbox__close" aria-label="Close">&times;</button>
+  </figure>
+</div>
+

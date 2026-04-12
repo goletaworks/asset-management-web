@@ -1,0 +1,152 @@
+<!-- frontend/project_history.html -->
+<div class="project-history card">
+  <div class="ph-header" style="display:flex;align-items:center;gap:12px;">
+    <button id="phAddBtn" class="btn btn-primary" disabled>+ Add Project Entry</button>
+  </div>
+
+  <div id="phList" class="ph-list" style="display:flex;flex-direction:column;gap:12px;margin-top:12px;"></div>
+</div>
+
+<!-- PDF Modal (hidden by default) -->
+<div id="pdfModalProject" class="modal" style="display:none;">
+  <div class="modal-content" style="max-width:960px;width:92%;height:80vh;display:flex;flex-direction:column;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <h3 id="pdfTitleProject" style="margin:0;">Project Report</h3>
+      <button id="pdfCloseProject" class="btn btn-ghost">Close</button>
+    </div>
+    <iframe id="pdfFrameProject" title="Project Report" style="flex:1;width:100%;border:1px solid var(--border);border-radius:8px;"></iframe>
+  </div>
+</div>
+
+<!-- Add Project Modal -->
+<div id="phModal" class="modal ph-modal" style="display:none;">
+  <div class="modal-content ph-modal__content" role="dialog" aria-labelledby="phModalTitle" aria-modal="true">
+    <div class="ph-modal__header">
+      <h3 id="phModalTitle">Add Project Entry</h3>
+      <p class="ph-subtitle">Create a new project entry, attach files, and optionally log repairs.</p>
+    </div>
+
+    <div class="ph-modal__body">
+      <!-- Details -->
+      <section class="ph-section">
+        <h4 class="ph-section__title">Details</h4>
+        <div class="ph-grid">
+          <div class="form-row required">
+            <label for="phYear">Year (YYYY)</label>
+            <input id="phYear" type="number" min="1000" max="9999" placeholder="2025" />
+            <small class="ph-help">Four digits, e.g., 2025</small>
+          </div>
+
+          <div class="form-row required">
+            <label for="phName">Name</label>
+            <input id="phName" type="text" placeholder="Bridge Construction" />
+            <small class="ph-help">A descriptive name for this project</small>
+          </div>
+
+          <div class="form-row">
+            <label for="phProjectLead">Project Lead</label>
+            <input id="phProjectLead" type="text" placeholder="E.g. Hiroki Haji" />
+          </div>
+
+          <div class="form-row" style="grid-column: 1 / -1;">
+            <label for="phComment">Comment</label>
+            <textarea id="phComment" rows="4" placeholder="Any notes..."></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- Files -->
+      <section class="ph-section">
+        <h4 class="ph-section__title">Files</h4>
+
+        <div class="ph-file-row">
+          <div class="ph-file-col">
+            <button id="phPickPhotos" class="btn">+ Add Photos…</button>
+            <span id="phPhotosSummary" class="ph-badge">0 selected</span>
+          </div>
+          <div class="ph-file-col">
+            <button id="phPickReport" class="btn">+ Add Project Report (PDF)…</button>
+            <span id="phReportSummary" class="ph-badge">None</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Repairs -->
+      <section class="ph-section">
+        <div class="ph-section__title-row">
+          <h4 class="ph-section__title">Repairs (optional)</h4>
+          <span class="ph-note">Add any repair items associated with this project.</span>
+        </div>
+
+        <!-- Add-row -->
+        <div class="ph-repairs-addGrid">
+          <div class="form-row">
+            <label for="phRepName">Repair Name *</label>
+            <input id="phRepName" type="text" />
+          </div>
+          <div class="form-row">
+            <label for="phRepSeverity">Severity</label>
+            <input id="phRepSeverity" type="text" placeholder="1-5" />
+          </div>
+          <div class="form-row">
+            <label for="phRepPriority">Priority</label>
+            <input id="phRepPriority" type="text" placeholder="1-5" />
+          </div>
+          <div class="form-row">
+            <label for="phRepCost">Cost</label>
+            <input id="phRepCost" type="text" />
+          </div>
+          <div class="form-row">
+            <label for="phRepType">Type / Scope Type</label>
+            <input id="phRepType" type="text" />
+          </div>
+          <div class="form-row">
+            <label for="phRepDays">Days</label>
+            <input id="phRepDays" type="text" />
+          </div>
+          <div class="form-row">
+            <label for="phRepCategory">Category</label>
+            <select id="phRepCategory">
+              <option value="Capital">Capital</option>
+              <option value="O&M">O&amp;M</option>
+              <option value="Decommission">Decommission</option>
+            </select>
+          </div>
+          <div class="form-row form-row--button">
+            <button id="phAddRepairBtn" class="btn">+ Add Repair</button>
+          </div>
+        </div>
+
+        <!-- List of pending repairs -->
+        <div class="table-scroll ph-table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:40%;">Repair Name</th>
+                <th>Severity</th>
+                <th>Priority</th>
+                <th>Cost</th>
+                <th>Type / Scope Type</th>
+                <th>Days</th>
+                <th>Category</th>
+                <th style="width:54px;">&nbsp;</th>
+              </tr>
+            </thead>
+            <tbody id="phRepairsTbody">
+              <tr class="ph-repairs-empty">
+                <td colspan="8" style="text-align:center;color:#6b7280;">No repairs added</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <div id="phError" class="ph-error" style="display:none;"></div>
+    </div>
+
+    <div class="ph-modal__footer">
+      <button id="phCreateBtn" class="btn btn-primary">Create</button>
+      <button id="phCancelBtn" class="btn btn-ghost">Cancel</button>
+    </div>
+  </div>
+</div>

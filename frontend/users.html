@@ -1,0 +1,110 @@
+<!-- frontend/users.html -->
+<div id="usersPage" class="users-view">
+  <div class="users-header">
+    <h1>User Management</h1>
+    <button id="btnAddUser" class="btn btn-primary">+ Add User</button>
+  </div>
+
+  <div class="users-grid" id="usersGrid">
+    <!-- User cards will be populated here -->
+  </div>
+</div>
+
+<!-- Add User Modal -->
+<div id="addUserModal" class="modal-overlay" style="display:none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Add New User</h2>
+      <button class="modal-close" id="closeAddUser">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label>Name*</label>
+        <input type="text" id="newUserName" placeholder="Enter name" />
+      </div>
+      <div class="form-row">
+        <label>Email* (must be @ec.gc.ca)</label>
+        <input type="email" id="newUserEmail" placeholder="user@ec.gc.ca" />
+      </div>
+      <div class="form-row">
+        <label>Password*</label>
+        <input type="password" id="newUserPassword" placeholder="Enter password" />
+      </div>
+      <div class="form-row">
+        <label>Reason for access*</label>
+        <textarea id="newUserReason" placeholder="Explain why access is needed" rows="2"></textarea>
+      </div>
+      <div class="form-row">
+        <label>Request Access From*</label>
+        <select id="newUserApprover">
+          <option value="Khodayar Ahktarhavari">Khodayar Ahktarhavari</option>
+          <option value="Hiroki Haji">Hiroki Haji</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Request Permission Level*</label>
+        <select id="newUserPermissionLevel">
+          <option value="Read Only">Read Only</option>
+          <option value="Read and Edit">Read and Edit</option>
+          <option value="Read and Edit, including General Info, and Add Infrastructure">Read and Edit, including General Info, and Add Infrastructure</option>
+          <option value="Full Admin">Full Admin</option>
+        </select>
+        <p class="permission-info">
+          <strong>Permission levels</strong><br>
+          Read Only: view only. Read and Edit: edit station data, repairs, photos/docs, keywords, materials, settings colors. Read and Edit, including General Info, and Add Infrastructure: everything in Read and Edit plus manage companies/locations/asset types, general info, funding settings. Full Admin: all above plus user management and destructive actions.
+        </p>
+      </div>
+      <div class="form-row">
+        <button class="btn btn-primary btn-block" id="btnSendUserRequest">Send Request</button>
+      </div>
+      <div class="form-row">
+        <label>Access Code</label>
+        <input type="text" id="newUserAccessCode" placeholder="Code provided by approver" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="cancelAddUser">Cancel</button>
+      <button class="btn btn-primary" id="saveNewUser">Create Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit User Modal -->
+<div id="editUserModal" class="modal-overlay" style="display:none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Edit User</h2>
+      <button class="modal-close" id="closeEditUser">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label>Name</label>
+        <input type="text" id="editUserName" placeholder="Enter name" />
+      </div>
+      <div class="form-row">
+        <label>Email</label>
+        <input type="email" id="editUserEmail" placeholder="user@ec.gc.ca" />
+      </div>
+      <div class="form-row">
+        <label>Permission Level</label>
+        <select id="editUserPermissionLevel">
+          <option value="Read Only">Read Only</option>
+          <option value="Read and Edit">Read and Edit</option>
+          <option value="Read and Edit, including General Info, and Add Infrastructure">Read and Edit, including General Info, and Add Infrastructure</option>
+          <option value="Full Admin">Full Admin</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>New Password (leave blank to keep current)</label>
+        <input type="password" id="editUserPassword" placeholder="Enter new password" />
+      </div>
+        <p class="permission-info">
+          Full Admins can change their own name, email, or password here. You cannot change another user's name, email, or password; you can only adjust their permission level. You can delete accounts (including your own).
+        </p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="cancelEditUser">Cancel</button>
+      <button class="btn btn-primary" id="saveEditUser">Save Changes</button>
+    </div>
+  </div>
+</div>

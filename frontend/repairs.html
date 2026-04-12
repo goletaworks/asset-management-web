@@ -1,0 +1,64 @@
+<!-- frontend/repairs.html -->
+<div class="card">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;">
+    <h3 style="margin:0;">Repair Items</h3>
+    <div class="actions" style="gap:8px; display:flex; align-items:center;">
+      <button id="repEditBtn" class="btn">Edit</button>
+      <div id="repActionsBlock" style="display:none; gap:8px;">
+        <button id="repAddBtn" class="btn">+ Add Repair/Monitoring</button>
+        <button id="repSaveBtn" class="btn">Save Changes</button>
+        <button id="repResolveBtn" class="btn">Resolve Items</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Repair table -->
+  <!-- Dynamic tables per Type (only "Repair" exists at first; others appear as added/imported) -->
+  <div id="repTablesWrap" class="dynamic-repair-tables"></div>
+</div>
+
+<!-- Add Item Modal -->
+<div id="repAddModal" class="modal" style="display:none;">
+  <div class="modal-content" style="max-width:680px;width:92%;">
+    <h3 style="margin-top:0;">Add Item</h3>
+    <div class="form-grid ih-repairs-addGrid">
+      <div class="form-row" style="grid-column: 1 / 9;">
+        <label for="repName">Name *</label>
+        <input id="repName" type="text" />
+      </div>
+      <div class="form-row">
+        <label for="repSeverity">Severity</label>
+        <input id="repSeverity" type="text" placeholder="1-5" />
+      </div>
+      <div class="form-row">
+        <label for="repPriority">Priority</label>
+        <input id="repPriority" type="text" placeholder="1-5" />
+      </div>
+      <div class="form-row">
+        <label for="repCost">Cost</label>
+        <input id="repCost" type="text" />
+      </div>
+      <div class="form-row">
+        <label for="repDays">Days</label>
+        <input id="repDays" type="text" />
+      </div>
+      <div class="form-row">
+        <label for="repCategory">Category</label>
+        <select id="repCategory">
+          <option value="Capital">Capital</option>
+          <option value="O&M">O&M</option>
+          <option value="Decommission">Decommission</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="repType">Type / Scope Type</label>
+        <input id="repType" type="text" />
+      </div>
+    </div>
+    <div id="repFormError" class="ih-error" style="display:none;margin-top:6px;"></div>
+    <div class="modal-actions" style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
+      <button id="repCreate" class="btn btn-primary">Add</button>
+      <button id="repCancel" class="btn btn-ghost">Cancel</button>
+    </div>
+  </div>
+</div>

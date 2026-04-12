@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Asset Management</title>
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- App styles -->
+  <link rel="stylesheet" href="css/style.css" />
+  <!-- Leaflet via CDN (CSS must load first) -->
+  <link rel="stylesheet" href="assets/vendor/leaflet-1.9.4/leaflet.css" />
+</head>
+<body>
+  <!-- Leaflet (local, non-blocking) -->
+  <script defer src="assets/vendor/leaflet-1.9.4/leaflet.js"></script>
+  <div class="app-container">
+    <!-- Top Bar -->
+    <header class="title-bar">
+      <div class="brand-area">
+        <span style="font-weight:700;">Infrastructure Assets</span>
+      </div>
+      <div class="controls-row">
+        <div class="search">
+          <input type="search" id="searchAssets" placeholder="Search assets…" />
+        </div>
+      </div>
+    </header>
+
+    <div class="main-view-wrapper">
+      <div class="main-content" id="mainContent">
+        <!-- Left Nav -->
+        <aside class="left-panel">
+          <div class="brand">Asset Manager</div>
+
+          <div class="nav-section">
+            <h2>Navigation</h2>
+            <ul class="nav-list">
+              <li class="nav-item active" id="navMap">🗺️ <span>Map View</span></li>
+              <li class="nav-item" id="navList">📋 <span>List View</span></li>
+              <li class="nav-item" id="navDash">📊 <span>Dashboard</span></li>
+              <li class="nav-item" id="navOpt">📄 <span>Optimization</span></li>
+              <li class="nav-item" id="navMaterials">📚 <span>Materials Manager</span></li>
+            </ul>
+          </div>
+
+          <div class="nav-section">
+            <h2>Projects</h2>
+            <div id="filterTree" class="projects-tree"></div>
+          </div>
+
+          <div class="footer">
+            <ul class="nav-list">
+              <li class="nav-item" id="navNewCompany">＋ New Company</li>
+              <li class="nav-item" id="navSettings">⚙ Settings</li>
+              <li class="nav-item" id="navUsers">👤 Users</li>
+              <li class="nav-item" id="navLogout">⏻ Logout</li>
+            </ul>
+          </div>
+        </aside>
+
+        <!-- Edge handles (always present, sit on panel edges) -->
+        <button id="toggleLeft"
+                class="edge-toggle left"
+                title="Toggle left panel" aria-label="Toggle left panel" aria-pressed="false">⟨</button>
+        <button id="toggleRight"
+                class="edge-toggle right"
+                title="Toggle right panel" aria-label="Toggle right panel" aria-pressed="false">⟩</button>
+
+        <!-- Center Map -->
+        <div class="map-container" id="mapContainer">
+          <div id="map" aria-label="Map"></div>
+        </div>
+
+        <!-- List View (content loaded from list.html) -->
+        <div id="listContainer" class="list-container" style="display:none;"></div>
+
+        <!-- Optimization View -->
+        <div id="dashboardContentContainer" class="view" style="display:none;"></div>
+
+        <!-- Materials Manager View -->
+        <div id="materialsManagerContainer" class="view" style="display:none;"></div>
+
+        <!-- Dashboard View (content loaded from dashboard.html) -->
+        <div id="statisticsContainer" class="view" style="display:none;"></div>
+
+        <!-- Station Detail View (content loaded from station_specific.html) -->
+        <div id="stationContentContainer" style="display:none;"></div>
+
+        <!-- Add Infra / New Company (content loaded from add_infra.html) -->
+        <div id="addInfraContainer" style="display:none;"></div>
+
+        <!-- Settings (content loaded from settings.html) -->
+        <div id="settingsContainer" style="display:none;"></div>
+
+        <!-- Users View (content loaded from users.html) -->
+        <div id="usersContainer" class="view" style="display:none;"></div>
+
+        <!-- Right Panel -->
+        <aside class="right-panel" id="rightPanel">
+
+          <div class="chips"></div>
+
+          <h2>Station Details</h2>
+          <div id="station-details">
+            <p><em>Click a pin to see details</em></p>
+          </div>
+
+          <div class="actions"></div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+
+  <!-- Excel boot overlay: shows while ExcelJS/Lookups are initializing -->
+  <div id="excelBootOverlay" class="boot-overlay">
+    <div class="boot-card">
+      <div class="boot-title">Preparing Excel lookups…</div>
+      <div id="excelBootText" class="boot-status">Starting…</div>
+      <div class="boot-bar"><div id="excelBootFill" class="boot-bar-fill"></div></div>
+    </div>
+  </div>  
+
+  <script>window.L_NO_TOUCH=false; window.L_DISABLE_3D=true;</script>
+  <script defer src="js/appAlert.js"></script>
+  <script defer src="js/webApi.js"></script>
+  <script defer src="js/boot_status.js"></script>
+  <script defer src="js/filters.js"></script>
+  <script defer src="js/map_view.js"></script>
+  <script defer src="js/list_view.js"></script>
+  <script defer src="js/add_infra.js"></script>
+  <script defer src="js/optimization.js"></script>
+  <script defer src="js/materials_manager.js"></script>
+  <script defer src="js/dashboard.js"></script>
+  <script defer src="js/inspection_history.js"></script>
+  <script defer src="js/station.js"></script>
+  <script defer src="js/settings.js"></script>
+  <script defer src="js/repairs.js"></script>
+  <script defer src="js/nuke.js"></script>
+  <script defer src="js/link_settings.js"></script>
+  <script defer src="js/funding_settings.js"></script>
+  <script defer src="js/users.js"></script>
+  <script defer src="js/auth.js"></script>
+  <script defer src="js/file_naming_popup.js"></script>
+  <script defer src="js/documents_tab.js"></script>
+  <script defer src="js/photo_tab.js"></script>
+  <!-- If Leaflet still missing, show banner -->
+  <script>
+    // gentler warn: give CDN time to load
+    setTimeout(function(){
+      if (!window.L) {
+        var warn = document.createElement('div');
+        warn.textContent = 'Leaflet failed to load from CDN.';
+        warn.style.cssText = 'position:fixed;top:64px;left:0;right:0;background:#fee2e2;color:#991b1b;padding:8px 12px;z-index:99999;';
+        document.body.appendChild(warn);
+        console.error('[leaflet] not available; check network to unpkg.com');
+      }
+    }, 1500);
+  </script>
+
+  <script>
+    (function(){
+      const drawer = document.getElementById('filterDrawer');
+      const btn = document.getElementById('btnFilter');
+      if (btn && drawer) btn.addEventListener('click', () => {
+        drawer.classList.toggle('open');
+      });
+    })();
+  </script>
+
+  <!-- Collapsible LHS/RHS logic (persists state, resizes map safely) -->
+  <script>
+    (function(){
+      const root   = document.getElementById('mainContent');
+      const btnL   = document.getElementById('toggleLeft');
+      const btnR   = document.getElementById('toggleRight');
+
+      const read = () => ({
+        left:  localStorage.getItem('ui.collapse.left')  === '1',
+        right: localStorage.getItem('ui.collapse.right') === '1'
+      });
+      const write = (s) => {
+        localStorage.setItem('ui.collapse.left',  s.left  ? '1' : '0');
+        localStorage.setItem('ui.collapse.right', s.right ? '1' : '0');
+      };
+      const apply = (s) => {
+        if (!root) return;
+        root.classList.toggle('left-collapsed',  s.left);
+        root.classList.toggle('right-collapsed', s.right);
+        if (btnL) { btnL.setAttribute('aria-pressed', String(s.left));  btnL.textContent = s.left  ? '⟩' : '⟨'; }
+        if (btnR) { btnR.setAttribute('aria-pressed', String(s.right)); btnR.textContent = s.right ? '⟨' : '⟩'; }
+        // Nudge Leaflet/list to recalc sizes
+        setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+        setTimeout(() => window.dispatchEvent(new Event('resize')), 250);
+      };
+
+      // Initial state
+      apply(read());
+
+      if (btnL) btnL.addEventListener('click', () => {
+        const s = read(); s.left  = !s.left;  write(s); apply(s);
+      });
+      if (btnR) btnR.addEventListener('click', () => {
+        const s = read(); s.right = !s.right; write(s); apply(s);
+      });
+    })();
+  </script>
+
+  <!-- Full-width mode helpers -->
+  <script>
+    function enableFullWidthMode() {
+      const mainContent = document.getElementById('mainContent');
+      if (mainContent) {
+        mainContent.classList.add('full-width');
+      }
+    }
+
+    function disableFullWidthMode() {
+      const mainContent = document.getElementById('mainContent');
+      if (mainContent) {
+        mainContent.classList.remove('full-width');
+      }
+    }
+  </script>
+
+</body>
+</html>

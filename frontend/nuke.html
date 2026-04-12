@@ -1,0 +1,45 @@
+<div class="nuke-section" style="max-width:800px;">
+  <!-- Original nuke button -->
+  <div class="nuke-original mb-4 p-3 border rounded">
+    <h3 style="font-size:1.1rem;margin-bottom:1rem;font-weight:600;">Full Program Reset</h3>
+    <button id="nukeBtn" class="btn btn-danger">Nuke Entire Program</button>
+    <p class="hint" style="opacity:.9;margin:0.5rem 0 0 0;">
+      This button is for debugging purposes, and will delete ALL .xlsx files inside of the data folder
+    </p>
+    <div id="nukeStatus" class="hint" style="margin-top:.5rem;"></div>
+  </div>
+
+  <!-- Selective deletion -->
+  <div class="nuke-selective mt-4 p-3 border rounded">
+    <h3 style="font-size:1.1rem;margin-bottom:1rem;font-weight:600;">Selective Deletion</h3>
+    
+    <div class="form-group">
+      <label>Select what to delete:</label>
+      <div style="display:flex;gap:1rem;margin-bottom:1rem;">
+        <select id="deleteCompanySelect" class="form-control" style="flex:1;">
+          <option value="">-- Select Company --</option>
+        </select>
+        
+        <select id="deleteLocationSelect" class="form-control" style="flex:1;" disabled>
+          <option value="">-- Select Location --</option>
+        </select>
+        
+        <select id="deleteAssetTypeSelect" class="form-control" style="flex:1;" disabled>
+          <option value="">-- Select Asset Type --</option>
+        </select>
+      </div>
+      
+      <div id="deletePreview" class="alert alert-info" style="display:none;margin-bottom:1rem;">
+        <strong>Preview:</strong> <span id="deletePreviewText"></span>
+      </div>
+      
+      <button id="deleteSelectedBtn" class="btn btn-warning" disabled>Delete Selected</button>
+      <div id="deleteStatus" class="hint" style="margin-top:.5rem;"></div>
+    </div>
+    
+    <p class="hint" style="opacity:.7;margin-top:1rem;">
+      Note: Deleting a company will remove all its locations and asset types. 
+      Deleting a location will remove all its asset types.
+    </p>
+  </div>
+</div>

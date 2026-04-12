@@ -1,0 +1,28 @@
+[
+  {
+    "id": "ebc2cb9d-fcdc-453c-b82b-7679ebbca208",
+    "name": "Paul Tester",
+    "email": "paul.h.monk@ec.gc.ca",
+    "passwordHash": "805d6720d64beac07c4550ded4b3b3ef73934bf69fc9ce5a2b274b18bf0c7e10",
+    "reason": "I want in",
+    "approver": "Khodayar Ahktarhavari",
+    "approverEmail": "khodayar.ahktarhavari@ec.gc.ca",
+    "permissionLevel": "Full Admin",
+    "codeHash": "c583f875badbab57a6ad311bdf64c56c0fcb7e71d14b6ed541f12c8fbaf31869",
+    "status": "pending",
+    "createdAt": "2026-02-11T04:54:52.539Z"
+  },
+  {
+    "id": "b205fc57-8ae7-4d8c-bb93-8bc12e450d7e",
+    "name": "Tester",
+    "email": "paul@ec.gc.ca",
+    "passwordHash": "a6299150e90a7fa77a506764a77f913b8b8f604a377627cde03f4b0c07946633",
+    "reason": "i want",
+    "approver": "Khodayar Ahktarhavari",
+    "approverEmail": "khodayar.ahktarhavari@ec.gc.ca",
+    "permissionLevel": "Read Only",
+    "codeHash": "3ec1b2fea3f863c2fab235bb921322b29d347ad52172df321746f6201e21f77f",
+    "status": "pending",
+    "createdAt": "2026-02-11T18:29:23.047Z"
+  }
+]

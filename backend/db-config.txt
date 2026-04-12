@@ -1,0 +1,19 @@
+{
+  "database": {
+    "type": "mongodb",
+    "connectionString": "mongodb+srv://username:password@host/dbname?retryWrites=true&w=majority&appName=Cluster0"
+  },
+  "read": {
+    "source": "excel"
+  },
+  "write": {
+    "targets": ["excel", "mongodb"]
+  }
+}
+
+
+
+NOTES:
+
+the Read Source can either be "excel" or "mongodb"
+the Write Source can either be ["excel", "mongodb"] , ["excel"] , or ["mongodb"]
