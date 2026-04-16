@@ -1305,7 +1305,7 @@
   async function openCreateAssetsWizard(company, location) {
     const view = `
       <div class="panel-form" id="assetsPanel">
-        <h2 style="margin-top:0;">Create Assets</h2>
+        <h2 style="margin-top:0;">Create Asset Type</h2>
 
         <div class="card">
           <div class="card-title">Context</div>
@@ -1316,8 +1316,11 @@
         </div>
 
         <div class="form-row">
-          <label>Asset Name*</label>
-          <input type="text" id="assetName2" placeholder="Enter asset name" />
+          <label>Asset Type Name*</label>
+          <input type="text" id="assetName2" placeholder="Enter asset type name" />
+          <div class="hint" style="opacity:.75;margin-top:.25rem;">
+            You can create the type now and add instances later, or import/add instances below.
+          </div>
         </div>
 
         <div class="form-row">
@@ -1363,6 +1366,7 @@
 
         <div class="wizard-footer" style="justify-content:flex-end;">
           <button id="btnCancel2" class="btn btn-ghost">Cancel</button>
+          <button id="btnCreateType2" class="btn btn-primary" disabled>Create Asset Type</button>
           <button id="btnImport2" class="btn btn-primary" disabled>Import Selected</button><button id="btnManual2" class="btn btn-ghost" style="margin-left:.5rem;">Create Manually…</button>
         </div>
       </div>`;
@@ -1396,9 +1400,11 @@
 
     function updateBadge() { $('#rowCount2').textContent = `${state.selectedIdx.size} selected`; }
     function setButtonsState() {
+      const hasName = !!($('#assetName2')?.value || '').trim();
       const hasExcel = !!(state.rows && state.rows.length);
+      $('#btnCreateType2').disabled = !hasName;
       $('#btnImport2').disabled = !hasExcel || !state.selectedIdx.size;
-      $('#btnManual2').disabled = !($('#assetName2')?.value || '').trim();
+      $('#btnManual2').disabled = !hasName;
     }
     function setHeaderTriState() {
       const chkAll = thead.querySelector('#chkAll2');
@@ -1552,10 +1558,34 @@
 
     host.querySelector('#assetName2')?.addEventListener('input', setButtonsState);
 
+    $('#btnCreateType2')?.addEventListener('click', async () => {
+      const assetName = ($('#assetName2')?.value || '').trim();
+      if (!assetName) return appAlert('Please enter an asset name first.');
+      try {
+        $('#btnCreateType2').disabled = true;
+        $('#btnCreateType2').textContent = 'Creating\u2026';
+        await saveAssetTypeLinkIfAny(assetName);
+        const res = await window.electronAPI.upsertAssetType(assetName, company, location);
+        if (!res || res.success === false) {
+          return appAlert(res?.message || 'Failed to create asset type.');
+        }
+        await window.refreshFilters?.();
+        await window.refreshMarkers?.();
+        await window.renderList?.();
+        appAlert('Asset type created.');
+        closePanel();
+      } catch (e) {
+        console.error('[createAssetType] failed', e);
+        appAlert('Unexpected error while creating the asset type.');
+      } finally {
+        const btn = $('#btnCreateType2');
+        if (btn) { btn.disabled = false; btn.textContent = 'Create Asset Type'; }
+      }
+    });
+
     $('#btnManual2')?.addEventListener('click', async () => {
       const assetName = ($('#assetName2')?.value || '').trim();
       if (!assetName) return appAlert('Please enter an asset name first.');
-      // Save optional per-asset-type link before opening manual wizard
       await saveAssetTypeLinkIfAny(assetName);
       openManualInstanceWizard(company, location, assetName);
     });
