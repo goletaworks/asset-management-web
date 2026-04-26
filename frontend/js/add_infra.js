@@ -451,6 +451,7 @@
     setActiveNav('navNewCompany');
     return container;
   }
+
   function closePanel() {
     const container = document.getElementById('addInfraContainer');
     if (container) container.innerHTML = '';
@@ -461,11 +462,11 @@
     }
   }
 
-  // Create Company panel
+  // Create Company
   async function openCreateCompanyForm() {
     const view = `
       <div class="panel-form">
-        <h2 style="margin-top:0;">Create Company</h2>
+        <h2 style="margin-top:0;">Add Company</h2>
         <div class="form-row">
           <label>Company Name*</label>
           <input type="text" id="coName" placeholder="Company name..." />
@@ -479,8 +480,8 @@
           <input type="email" id="coEmail" placeholder="" />
         </div>
         <div class="wizard-footer" style="justify-content:flex-end;">
-          <button id="btnCancel" class="btn btn-ghost">Cancel</button>
           <button id="btnSave" class="btn btn-primary">Save</button>
+          <button id="btnCancel" class="btn btn-ghost">Cancel</button>
         </div>
       </div>`;
     const host = showPanel(view);
@@ -510,7 +511,7 @@
   async function openCreateLocationForm(company) {
     const view = `
       <div class="panel-form">
-        <h2 style="margin-top:0;">Create Project/Location</h2>
+        <h2 style="margin-top:0;">${(company +' > ' || '')}Add Project/Location</h2>
         <div class="form-row">
           <label>Company</label>
           <input type="text" value="${(company||'')}" disabled />
@@ -528,7 +529,7 @@
         </div>
         <div class="wizard-footer" style="justify-content:flex-end;">
           <button id="btnCancel" class="btn btn-ghost">Cancel</button>
-          <button id="btnSave" class="btn btn-primary">Save</button>
+          <button id="btnSave" class="btn btn-primary" disabled>Save</button>
         </div>
       </div>`;
     const host = showPanel(view);
@@ -536,9 +537,14 @@
 
     const $ = sel => host.querySelector(sel);
     $('#btnCancel')?.addEventListener('click', () => closePanel());
+    
+    $('#locName')?.addEventListener('input', ()=>{
+      const hasName = !!($('#locName')?.value || '').trim();
+      $('#btnSave').disabled = !hasName;
+    });
+
     $('#btnSave')?.addEventListener('click', async () => {
-      const loc = ($('#locName')?.value || '').trim();
-      if (!loc) return appAlert('Please enter a location.');
+      const loc = $('#locName').value;
       try {
         const res = await window.electronAPI.upsertLocation(loc, company);
         // Only proceed if upsert succeeded
@@ -560,17 +566,16 @@
     });
   }
 
-  // Manual Instance Wizard
-  async function openManualInstanceWizard(company, location, assetType, { lat: prefillLat, lon: prefillLon } = {}) {
+  // Create Asset
+  async function openCreateAssetForm(company, location, assetType, { lat: prefillLat, lon: prefillLon } = {}) {
     const view = `
       <div class="panel-form" id="manualPanel">
-        <h2 style="margin-top:0;">Add ${assetType ? `“${assetType}”` : 'Asset'} Manually</h2>
+        <h2 style="margin-top:0;">${(company +' > ' || '')}${location} > ${assetType} > Add Asset</h2>
         <div class="card">
-          <div class="card-title">Context</div>
           <div class="kv">
             <div><strong>Company:</strong> ${company || '—'}</div>
-            <div><strong>Location / Province:</strong> ${location || '—'}</div>
-            <div><strong>Asset Type (Category):</strong> ${assetType || '—'}</div>
+            <div><strong>Project/Location:</strong> ${location || '—'}</div>
+            <div><strong>Asset Type:</strong> ${assetType || '—'}</div>
           </div>
         </div>
 
@@ -585,13 +590,15 @@
             <label>Site Name*</label>
             <input type="text" id="mSiteName" placeholder="e.g., River Bridge" />
           </div>
-          <div class="form-row">
-            <label>Latitude*</label>
-            <input type="text" id="mLat" placeholder="e.g., 49.2827" />
-          </div>
-          <div class="form-row">
-            <label>Longitude*</label>
-            <input type="text" id="mLon" placeholder="e.g., -123.1207" />
+          <div class="form-row form-row--split">
+            <div class="form-row__half">
+              <label>Latitude*</label>
+              <input type="text" id="mLat" placeholder="e.g., 49.2827" />
+            </div>
+            <div class="form-row__half">
+              <label>Longitude*</label>
+              <input type="text" id="mLon" placeholder="e.g., -123.1207" />
+            </div>
           </div>
           <div class="form-row">
             <label>Status*</label>
@@ -619,10 +626,10 @@
         </div>
 
         <div class="wizard-footer" style="justify-content:flex-end;">
+          <button id="mSave" class="btn btn-primary" style="display:none;">Save</button>
           <button id="mCancel" class="btn btn-ghost">Cancel</button>
           <button id="mBack" class="btn btn-ghost" disabled>Back</button>
           <button id="mNext" class="btn btn-primary">Next</button>
-          <button id="mSave" class="btn btn-primary" style="display:none;">Save</button>
         </div>
       </div>`;
     const host = showPanel(view);
@@ -645,17 +652,16 @@
       if (card) {
         card.id = 'mContextCard';
         card.innerHTML = `
-          <div class="card-title">Context</div>
           <div class="form-row">
             <label>Company*</label>
             <select id="mCompany"><option value="">Loading\u2026</option></select>
           </div>
           <div class="form-row">
-            <label>Location / Province*</label>
+            <label>Project/Location*</label>
             <select id="mLocation" disabled><option value="">Select company first\u2026</option></select>
           </div>
           <div class="form-row">
-            <label>Asset Type (Category)*</label>
+            <label>Asset Type*</label>
             <select id="mAssetType" disabled><option value="">Select location first\u2026</option></select>
           </div>`;
       }
@@ -957,7 +963,7 @@
   }
 
   // Import MORE for an existing Asset Type — opens NEW window if available
-  async function openImportMoreForAsset(company, location, assetType) {
+  async function openImportAssetsForm(company, location, assetType) {
     if (window.electronAPI && typeof window.electronAPI.openImportMoreWindow === 'function') {
       try { await window.electronAPI.openImportMoreWindow({ company, location, assetType }); } catch (_) {}
       return;
@@ -969,11 +975,10 @@
         <h2 style="margin-top:0;">Import more into “${assetType || 'Asset'}”</h2>
 
         <div class="card">
-          <div class="card-title">Context</div>
           <div class="kv">
             <div><strong>Company:</strong> ${company || '—'}</div>
-            <div><strong>Location / Province:</strong> ${location || '—'}</div>
-            <div><strong>Asset Type (Category):</strong> ${assetType || '—'}</div>
+            <div><strong>Project/Location:</strong> ${location || '—'}</div>
+            <div><strong>Asset Type:</strong> ${assetType || '—'}</div>
           </div>
         </div>
 
@@ -1301,14 +1306,13 @@
     renderTable();
   }
 
-  // Create Assets - Updated with schema conformance + virtualization
-  async function openCreateAssetsWizard(company, location) {
+  // Create Asset Type
+  async function openCreateAssetTypeForm(company, location) {
     const view = `
       <div class="panel-form" id="assetsPanel">
-        <h2 style="margin-top:0;">Create Asset Type</h2>
+        <h2 style="margin-top:0;">Add Asset Type</h2>
 
         <div class="card">
-          <div class="card-title">Context</div>
           <div class="kv">
             <div><strong>Company:</strong> ${company || '—'}</div>
             <div><strong>Location:</strong> ${location || '—'}</div>
@@ -1319,7 +1323,7 @@
           <label>Asset Type Name*</label>
           <input type="text" id="assetName2" placeholder="Enter asset type name" />
           <div class="hint" style="opacity:.75;margin-top:.25rem;">
-            You can create the type now and add instances later, or import/add instances below.
+            You can create the type now and add instances later from the asset type's menu.
           </div>
         </div>
 
@@ -1331,66 +1335,17 @@
           </div>
         </div>
 
-        <div class="form-row">
-          <label>Excel File</label>
-          <div class="filepicker">
-            <input type="file" id="excelFile2" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
-            <span id="excelFile2Label">Select Excel File</span>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <label>Select sheet</label>
-          <select id="sheetSelect2" disabled>
-            <option>Select Excel file first</option>
-          </select>
-        </div>
-
-        <hr style="margin:1rem 0;">
-
-        <h3>Select data</h3>
-        <div class="table-toolbar">
-          <div>
-            <button id="btnSelectAll2" class="btn btn-ghost">Select all</button>
-            <button id="btnDeselectAll2" class="btn btn-ghost">Deselect all</button>
-          </div>
-          <div id="rowCount2" class="badge">0 selected</div>
-        </div>
-
-        <div class="table-scroll">
-          <table id="previewTable2" class="data-table">
-            <thead></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-
         <div class="wizard-footer" style="justify-content:flex-end;">
           <button id="btnCancel2" class="btn btn-ghost">Cancel</button>
-          <button id="btnCreateType2" class="btn btn-primary" disabled>Create Asset Type</button>
-          <button id="btnImport2" class="btn btn-primary" disabled>Import Selected</button><button id="btnManual2" class="btn btn-ghost" style="margin-left:.5rem;">Create Manually…</button>
+          <button id="btnCreateType2" class="btn btn-primary" disabled>Save</button>
+          <!-- <button id="btnManual2" class="btn btn-ghost" style="margin-left:.5rem;">Create Manually…</button> -->
         </div>
       </div>`;
     const host = showPanel(view);
     if (!host) return;
 
     const $ = sel => host.querySelector(sel);
-    const thead = $('#previewTable2 thead');
-    const tbody = $('#previewTable2 tbody');
 
-    const state = {
-      excelB64: null,
-      sheets: [],
-      selectedSheet: null,
-      headers: [],
-      sections: [],
-      rows: [],
-      selectedIdx: new Set()
-    };
-
-    let vt2 = null;
-    let bound = false;
-
-    // Save per-asset-type link if the user provided one
     async function saveAssetTypeLinkIfAny(assetName) {
       const link = (host.querySelector('#assetLink2')?.value || '').trim();
       if (!link || !assetName) return;
@@ -1398,164 +1353,13 @@
       catch (_) {}
     }
 
-    function updateBadge() { $('#rowCount2').textContent = `${state.selectedIdx.size} selected`; }
     function setButtonsState() {
       const hasName = !!($('#assetName2')?.value || '').trim();
-      const hasExcel = !!(state.rows && state.rows.length);
       $('#btnCreateType2').disabled = !hasName;
-      $('#btnImport2').disabled = !hasExcel || !state.selectedIdx.size;
-      $('#btnManual2').disabled = !hasName;
-    }
-    function setHeaderTriState() {
-      const chkAll = thead.querySelector('#chkAll2');
-      if (!chkAll) return;
-      const total = state.rows.length;
-      const sel = state.selectedIdx.size;
-      chkAll.checked = sel > 0 && sel === total;
-      chkAll.indeterminate = sel > 0 && sel < total;
+      // $('#btnManual2').disabled = !hasName;
     }
 
-    function renderTable() {
-      const scroller = tbody.closest('.table-scroll');
-      let empty = host.querySelector('#caEmptyNote');
-      if (!empty) {
-        empty = document.createElement('div');
-        empty.id = 'caEmptyNote';
-        empty.className = 'empty-note';
-        empty.textContent = 'Select an Excel file and sheet to preview rows.';
-        scroller.parentNode.insertBefore(empty, scroller);
-      }
-
-      thead.innerHTML = '';
-      if (!vt2) tbody.innerHTML = '';
-
-      if (!state.rows.length) {
-        scroller.classList.add('is-hidden');
-        empty.classList.add('show');
-        if (vt2) { vt2.destroy(); vt2 = null; }
-        tbody.innerHTML = '';
-        updateBadge(); setButtonsState();
-        return;
-      }
-
-      scroller.classList.remove('is-hidden');
-      empty.classList.remove('show');
-
-      // section header
-      const trSec = document.createElement('tr');
-      const thLead = document.createElement('th');
-      thLead.style.width = '36px';
-      thLead.innerHTML = '<input id="chkAll2" type="checkbox"/>';
-      trSec.appendChild(thLead);
-
-      let i = 0;
-      while (i < state.headers.length) {
-        const sec = state.sections[i] || '';
-        let span = 1;
-        while (i + span < state.headers.length && (state.sections[i + span] || '') === sec) span++;
-        const th = document.createElement('th');
-        th.colSpan = span;
-        th.textContent = sec || '';
-        trSec.appendChild(th);
-        i += span;
-      }
-      thead.appendChild(trSec);
-
-      // field header
-      const trFld = document.createElement('tr');
-      trFld.innerHTML = '<th></th>' + state.headers.map(h => `<th>${esc(h)}</th>`).join('');
-      thead.appendChild(trFld);
-
-      const chkAll = thead.querySelector('#chkAll2');
-      if (chkAll) {
-        chkAll.addEventListener('change', () => {
-          state.selectedIdx = chkAll.checked ? new Set(state.rows.map((_, i) => i)) : new Set();
-          updateBadge(); setHeaderTriState(); setButtonsState(); vt2?.refresh();
-        });
-      }
-
-      state.selectedIdx = new Set(state.rows.map((_, idx) => idx));
-
-      const renderRowHTML = (row, i) => {
-        const checked = state.selectedIdx.has(i) ? 'checked' : '';
-        let cells = `<td><input type="checkbox" class="rowchk2" ${checked}></td>`;
-        for (let idx = 0; idx < state.headers.length; idx++) {
-          const h = state.headers[idx];
-          const sec = state.sections[idx] || '';
-          const key = sec ? `${sec} – ${h}` : h;
-          const val = (row?.[key] ?? row?.[h] ?? '');
-          cells += `<td>${esc(val)}</td>`;
-        }
-        return cells;
-      };
-
-      if (!vt2) {
-        vt2 = mountVirtualizedTable({
-          rows: state.rows,
-          tbody,
-          renderRowHTML,
-          rowHeight: 44,
-          overscan: 10,
-          adaptiveHeight: true, // <-- key line
-          maxViewport: 520,
-          minViewport: 0
-        });
-      } else {
-        vt2.update(state.rows);
-      }
-      requestAnimationFrame(() => vt2 && vt2.refresh());
-
-      if (!bound) {
-        bound = true;
-        tbody.addEventListener('change', (e) => {
-          const t = e.target;
-          if (!(t instanceof HTMLInputElement) || !t.classList.contains('rowchk2')) return;
-          const tr = t.closest('tr'); if (!tr) return;
-          const idx = Number(tr.dataset.index); if (Number.isNaN(idx)) return;
-          if (t.checked) state.selectedIdx.add(idx); else state.selectedIdx.delete(idx);
-          updateBadge(); setHeaderTriState(); setButtonsState();
-        });
-      }
-
-      updateBadge(); setHeaderTriState(); setButtonsState();
-    }
-
-    async function buildPreview() {
-      if (!state.excelB64 || !state.selectedSheet) {
-        state.rows = [];
-        renderTable();
-        return;
-      }
-      try {
-        const res = await window.electronAPI.excelParseRowsFromSheet(state.excelB64, state.selectedSheet);
-        if (!res || res.success === false) {
-          console.error('[assets] parseRowsFromSheet failed:', res?.message);
-          state.rows = [];
-          renderTable();
-          return;
-        }
-        state.rows = res.rows || [];
-        state.headers = res.headers || (state.rows.length ? Object.keys(state.rows[0]) : []);
-        state.sections = res.sections || state.headers.map(() => '');
-        renderTable();
-      } catch (e) {
-        console.error('[assets] buildPreview error', e);
-        state.rows = [];
-        renderTable();
-      }
-    }
-
-    // Bind UI
     $('#btnCancel2')?.addEventListener('click', () => closePanel());
-    $('#btnSelectAll2')?.addEventListener('click', () => {
-      state.selectedIdx = new Set(state.rows.map((_, i) => i));
-      updateBadge(); setHeaderTriState(); setButtonsState(); vt2?.refresh();
-    });
-    $('#btnDeselectAll2')?.addEventListener('click', () => {
-      state.selectedIdx.clear();
-      updateBadge(); setHeaderTriState(); setButtonsState(); vt2?.refresh();
-    });
-
     host.querySelector('#assetName2')?.addEventListener('input', setButtonsState);
 
     $('#btnCreateType2')?.addEventListener('click', async () => {
@@ -1572,7 +1376,6 @@
         await window.refreshFilters?.();
         await window.refreshMarkers?.();
         await window.renderList?.();
-        appAlert('Asset type created.');
         closePanel();
       } catch (e) {
         console.error('[createAssetType] failed', e);
@@ -1583,139 +1386,12 @@
       }
     });
 
-    $('#btnManual2')?.addEventListener('click', async () => {
-      const assetName = ($('#assetName2')?.value || '').trim();
-      if (!assetName) return appAlert('Please enter an asset name first.');
-      await saveAssetTypeLinkIfAny(assetName);
-      openManualInstanceWizard(company, location, assetName);
-    });
-
-    function fileToBase64(file) {
-      return new Promise((resolve, reject) => {
-        const rdr = new FileReader();
-        rdr.onload = () => {
-          const s = String(rdr.result || '');
-          const i = s.indexOf(',');
-          resolve(i >= 0 ? s.slice(i + 1) : s);
-        };
-        rdr.onerror = reject;
-        rdr.readAsDataURL(file);
-      });
-    }
-
-    function populateSheetSelect(names) {
-      const sel = $('#sheetSelect2');
-      sel.innerHTML = '';
-      if (!names || !names.length) {
-        sel.appendChild(new Option('No sheets detected', '', true, true));
-        sel.disabled = true;
-        return;
-      }
-      names.forEach((n, i) => sel.appendChild(new Option(n, n, i===0, i===0)));
-      sel.disabled = false;
-      state.selectedSheet = sel.value || null;
-    }
-
-    $('#excelFile2')?.addEventListener('change', async (e) => {
-      const f = (e.target.files || [])[0];
-      if (!f) {
-        state.excelB64 = null; state.sheets = []; populateSheetSelect([]); renderTable(); return;
-      }
-      $('#excelFile2Label').textContent = f.name || 'Selected Excel';
-      try {
-        state.excelB64 = await fileToBase64(f);
-        const res = await window.electronAPI.excelListSheets(state.excelB64);
-        state.sheets = (res && res.sheets) || [];
-        populateSheetSelect(state.sheets);
-        await buildPreview();
-      } catch (err) {
-        console.error('[assets] list sheets failed', err);
-        populateSheetSelect([]); renderTable();
-      }
-    });
-
-    $('#sheetSelect2')?.addEventListener('change', async () => {
-      state.selectedSheet = $('#sheetSelect2').value || null;
-      await buildPreview();
-    });
-
-    $('#btnImport2')?.addEventListener('click', async () => {
-      const assetName = ($('#assetName2')?.value || '').trim();
-      if (!assetName) return appAlert('Please enter an asset name.');
-      if (!state.rows.length) return appAlert('No rows to import (select a sheet).');
-      const idxs = Array.from(state.selectedIdx.values()).sort((a,b) => a-b);
-      if (!idxs.length) return appAlert('Please select at least one row.');
-
-      try {
-        $('#btnImport2').textContent = 'Importing...';
-        $('#btnImport2').disabled = true;
-
-        // Persist optional per-asset-type link before creating/upserting type
-        await saveAssetTypeLinkIfAny(assetName);
-
-        const up = await window.electronAPI.upsertAssetType(assetName, company, location);
-        if (!up || up.success === false) return appAlert(up?.message || 'Failed to create asset type.');
-
-        const selectedRowsRaw = idxs.map(i => state.rows[i]).filter(Boolean);
-        // Normalize GI for "no sections" sources
-        const selectedRows = selectedRowsRaw.map((r) => {
-          const row = { ...r };
-          const hasCat = (row['Category'] ?? row['category'] ?? row['General Information – Category'])?.toString()?.trim();
-          if (!hasCat && assetName) {
-            row['Category'] = assetName;
-            row['General Information – Category'] = assetName;
-          }
-          const hasProv = (row['Province'] ?? row['province'] ?? row['General Information – Province'])?.toString()?.trim();
-          if (!hasProv && location) {
-            row['Province'] = location;
-            row['General Information – Province'] = location;
-          }
-          return row;
-        });
-
-        const payload = {
-          location,
-          company,
-          sheetName: state.selectedSheet || 'Data',
-          sections: state.sections,
-          headers: state.headers,
-          rows: selectedRows,
-          assetType: assetName,
-        };
-
-        const res = await window.electronAPI.importSelection(payload);
-        if (!res || res.success === false) {
-          appAlert(res?.message || 'Import failed.');
-          return;
-        }
-
-        if (typeof window.invalidateStationData === 'function') window.invalidateStationData();
-        if (typeof window.electronAPI.invalidateStationCache === 'function') {
-          await window.electronAPI.invalidateStationCache();
-        }
-        if (typeof window.electronAPI.normalizeFundingOverrides === 'function') {
-          await window.electronAPI.normalizeFundingOverrides();
-        }
-        broadcastLookupChange();
-        await window.refreshFilters?.();
-        await window.refreshMarkers?.();
-        await window.renderList?.();
-        await window.refreshStatisticsView?.();
-        
-        appAlert(`Successfully imported ${res.added} row(s). Data will be synchronized with existing ${assetName} schema if applicable.`);
-        closePanel();
-
-      } catch (e) {
-        console.error('[assets] import failed', e);
-        appAlert('Unexpected import error. See console.');
-      } finally {
-        $('#btnImport2').textContent = 'Import Selected';
-        setButtonsState();
-      }
-    });
-
-    // initial empty render
-    renderTable();
+    // $('#btnManual2')?.addEventListener('click', async () => {
+    //   const assetName = ($('#assetName2')?.value || '').trim();
+    //   if (!assetName) return appAlert('Please enter an asset name first.');
+    //   await saveAssetTypeLinkIfAny(assetName);
+    //   openCreateAssetForm(company, location, assetName);
+    // });
   }
 
   // Bootstrapping & Nav bindings
@@ -1812,9 +1488,9 @@
   // Expose for filters.js [+] actions
   window.openCreateCompanyForm  = window.openCreateCompanyForm  || openCreateCompanyForm;
   window.openCreateLocationForm = window.openCreateLocationForm || openCreateLocationForm;
-  window.openCreateAssetsWizard = window.openCreateAssetsWizard || openCreateAssetsWizard;
-  window.openManualInstanceWizard = window.openManualInstanceWizard || openManualInstanceWizard;
-  window.openImportMoreForAsset = window.openImportMoreForAsset || openImportMoreForAsset;
+  window.openCreateAssetsWizard = window.openCreateAssetsWizard || openCreateAssetTypeForm;
+  window.openManualInstanceWizard = window.openManualInstanceWizard || openCreateAssetForm;
+  window.openImportMoreForAsset = window.openImportMoreForAsset || openImportAssetsForm;
 
   // Also expose view switches
   window.showMapView   = window.showMapView   || showMapView;

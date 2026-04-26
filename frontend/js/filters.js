@@ -282,7 +282,11 @@
   function showPlusMenu(anchorBtn, items = []) {
     // If this button's menu is already open, close it and bail (toggle off)
     const alreadyOpen = _openMenuBtn === anchorBtn;
+    // Clean up any existing open menu
+    const prevWrap = _openMenuBtn?.closest('.ft-actions');
     document.querySelectorAll('.ft-plus-menu').forEach(m => m.remove());
+    if (prevWrap) prevWrap.classList.remove('ft-actions--open');
+    _openMenuBtn?.blur();
     _openMenuBtn = null;
     if (alreadyOpen) return;
 
@@ -304,6 +308,10 @@
     document.body.appendChild(menu);
     _openMenuBtn = anchorBtn;
 
+    // Keep the actions wrapper visible while its menu is open
+    const actionsWrap = anchorBtn.closest('.ft-actions');
+    if (actionsWrap) actionsWrap.classList.add('ft-actions--open');
+
     // Position below the anchor, flip upward if it would overflow
     const rect = anchorBtn.getBoundingClientRect();
     const menuH = menu.offsetHeight || 200;
@@ -318,7 +326,13 @@
     const left  = Math.min(rect.left, window.innerWidth - menuW - 8);
     menu.style.left = `${Math.max(8, left)}px`;
 
-    function cleanup() { menu.remove(); _openMenuBtn = null; document.removeEventListener('click', onDoc, true); }
+    function cleanup() {
+      menu.remove();
+      _openMenuBtn = null;
+      if (actionsWrap) actionsWrap.classList.remove('ft-actions--open');
+      anchorBtn.blur();
+      document.removeEventListener('click', onDoc, true);
+    }
     function onDoc(e) { if (!menu.contains(e.target) && !anchorBtn.contains(e.target)) cleanup(); }
     setTimeout(() => document.addEventListener('click', onDoc, true), 0);
   }
@@ -358,7 +372,7 @@
 
         if (kind === 'company') {
           items.push({
-            label: 'Add Location',
+            label: 'Add Project/Location',
             icon: 'fa-solid fa-plus',
             onClick: () => window.openCreateLocationForm && window.openCreateLocationForm(company),
           });
@@ -385,14 +399,14 @@
           });
           items.push({ divider: true });
           items.push({
-            label: 'Edit Location',
+            label: 'Edit Project/Location',
             icon: 'fa-solid fa-pen',
             onClick: () => window.openEditLocationForm
               ? window.openEditLocationForm(company, location)
               : console.warn('[filters] openEditLocationForm not implemented'),
           });
           items.push({
-            label: 'Delete location',
+            label: 'Delete Project/Location',
             icon: 'fa-solid fa-trash-can',
             danger: true,
             onClick: () => confirmDelete('location', company, location, null),

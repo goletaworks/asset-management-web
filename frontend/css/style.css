@@ -572,6 +572,10 @@ a { color: inherit; text-decoration: none; }
   background: #fff;
 }
 .form-row textarea { resize: vertical; }
+.form-row--split { flex-direction: row; gap: 12px; }
+.form-row--split .form-row__half { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; }
+.form-row--split .form-row__half label { font-size: 14px; color: #374151; margin-bottom: 8px; }
+.form-row--split .form-row__half input { width: 100%; box-sizing: border-box; }
 
 .filepicker {
   position: relative;
@@ -666,7 +670,8 @@ a { color: inherit; text-decoration: none; }
   transition:opacity .15s ease;
 }
 #filterTree .ft-row:hover > .ft-actions,
-#filterTree .ft-row:focus-within > .ft-actions{
+#filterTree .ft-row:focus-within > .ft-actions,
+#filterTree .ft-actions.ft-actions--open{
   opacity:1; pointer-events:auto;
 }
 #filterTree .ft-actions .btn,
@@ -1852,7 +1857,8 @@ html.modal-open, body.modal-open { overflow: hidden; }
     box-shadow: inset 0 0 0 1px rgba(255,255,255,.02);
   }
   .panel-form h2 { color: #e5e7eb; }
-  .panel-form .form-row label { color: #cbd5e1; }
+  .panel-form .form-row label,
+  .panel-form .form-row__half label { color: #cbd5e1; }
   .panel-form .wizard-footer { border-top-color: #1f2937; }
 }
 
