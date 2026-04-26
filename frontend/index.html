@@ -68,6 +68,9 @@
                 class="edge-toggle right"
                 title="Toggle right panel" aria-label="Toggle right panel" aria-pressed="false">⟩</button>
 
+        <!-- Left resize gutter -->
+        <div class="resize-gutter resize-gutter--left" id="gutterLeft"></div>
+
         <!-- Center Map -->
         <div class="map-container" id="mapContainer">
           <div id="map" aria-label="Map"></div>
@@ -96,6 +99,9 @@
 
         <!-- Users View (content loaded from users.html) -->
         <div id="usersContainer" class="view" style="display:none;"></div>
+
+        <!-- Right resize gutter -->
+        <div class="resize-gutter resize-gutter--right" id="gutterRight"></div>
 
         <!-- Right Panel -->
         <aside class="right-panel" id="rightPanel">
@@ -190,6 +196,11 @@
         if (!root) return;
         root.classList.toggle('left-collapsed',  s.left);
         root.classList.toggle('right-collapsed', s.right);
+        // Override inline --left-col/--right-col so collapse wins over drag-resized values
+        if (s.left)  root.style.setProperty('--left-col',  '0px');
+        else         { const w = localStorage.getItem('ui.width.left');  root.style.setProperty('--left-col',  w ? w + 'px' : ''); }
+        if (s.right) root.style.setProperty('--right-col', '0px');
+        else         { const w = localStorage.getItem('ui.width.right'); root.style.setProperty('--right-col', w ? w + 'px' : ''); }
         if (btnL) { btnL.setAttribute('aria-pressed', String(s.left));  btnL.textContent = s.left  ? '⟩' : '⟨'; }
         if (btnR) { btnR.setAttribute('aria-pressed', String(s.right)); btnR.textContent = s.right ? '⟨' : '⟩'; }
         // Nudge Leaflet/list to recalc sizes
@@ -224,6 +235,70 @@
         mainContent.classList.remove('full-width');
       }
     }
+  </script>
+
+  <!-- Drag-to-resize gutters -->
+  <script>
+    (function(){
+      const root = document.getElementById('mainContent');
+      const gL   = document.getElementById('gutterLeft');
+      const gR   = document.getElementById('gutterRight');
+      if (!root) return;
+
+      const MIN_PX  = 200;
+      const MAX_PCT = 0.5;
+      const LS_L = 'ui.width.left';
+      const LS_R = 'ui.width.right';
+
+      // Restore saved widths on load (skip if the panel is collapsed)
+      const savedL = localStorage.getItem(LS_L);
+      const savedR = localStorage.getItem(LS_R);
+      if (savedL && !root.classList.contains('left-collapsed'))  root.style.setProperty('--left-col',  savedL + 'px');
+      if (savedR && !root.classList.contains('right-collapsed')) root.style.setProperty('--right-col', savedR + 'px');
+
+      function startDrag(side, gutter) {
+        return function onDown(e) {
+          e.preventDefault();
+          gutter.classList.add('dragging');
+          document.body.classList.add('col-resizing');
+          root.style.transition = 'none';
+
+          const onMove = (ev) => {
+            const vw = window.innerWidth;
+            const max = vw * MAX_PCT;
+            let px;
+            if (side === 'left') {
+              px = ev.clientX;
+            } else {
+              px = vw - ev.clientX;
+            }
+            px = Math.max(MIN_PX, Math.min(max, px));
+            root.style.setProperty(side === 'left' ? '--left-col' : '--right-col', px + 'px');
+          };
+
+          const onUp = () => {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            gutter.classList.remove('dragging');
+            document.body.classList.remove('col-resizing');
+            root.style.transition = '';
+
+            // Persist
+            const val = getComputedStyle(root).getPropertyValue(side === 'left' ? '--left-col' : '--right-col').trim();
+            localStorage.setItem(side === 'left' ? LS_L : LS_R, parseInt(val, 10));
+
+            // Nudge map / list layout
+            window.dispatchEvent(new Event('resize'));
+          };
+
+          document.addEventListener('mousemove', onMove);
+          document.addEventListener('mouseup', onUp);
+        };
+      }
+
+      if (gL) gL.addEventListener('mousedown', startDrag('left', gL));
+      if (gR) gR.addEventListener('mousedown', startDrag('right', gR));
+    })();
   </script>
 
 </body>
