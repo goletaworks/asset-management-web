@@ -94,11 +94,13 @@
     if (!(kind === 'company' || kind === 'location' || kind === 'asset')) return null;
 
     const wrap = el('div', { class: 'ft-actions', style: 'display:inline-flex;gap:.4rem;margin-left:auto;' });
+    const plusIcon = el('i', { class: 'fa-solid fa-ellipsis', 'aria-hidden': 'true' });
     const plus = el('button', {
       type: 'button',
       class: 'ft-plus',
       title: (kind === 'company') ? 'Add location' : (kind === 'location' ? 'Add assets' : 'Add instance')
-    }, '+');
+    });
+    plus.appendChild(plusIcon);
 
     wrap.appendChild(plus);
     if (company)  wrap.dataset.company  = company;
@@ -273,53 +275,157 @@
     dispatchChange();
   }
 
-  // small inline menu for [+] actions on asset row
+  // Track which button currently owns an open menu so a second click toggles it closed
+  let _openMenuBtn = null;
+
+  // Context menu for row actions
   function showPlusMenu(anchorBtn, items = []) {
-    const rect = anchorBtn.getBoundingClientRect();
-    const menu = el('div', { class: 'ft-plus-menu',
-      style: `
-        position: fixed; z-index: 9999; top:${rect.bottom + 4}px; left:${rect.left}px;
-        background:#fff;border:1px solid rgba(0,0,0,.1);box-shadow:0 6px 24px rgba(0,0,0,.12);
-        border-radius:8px; overflow:hidden; min-width:220px;`
-    });
-    items.forEach(({ label, onClick }) => {
-      const it = el('button', { class: 'btn btn-ghost', style: 'display:block;width:100%;text-align:left;padding:.5rem .75rem;border:0;' }, label);
+    // If this button's menu is already open, close it and bail (toggle off)
+    const alreadyOpen = _openMenuBtn === anchorBtn;
+    document.querySelectorAll('.ft-plus-menu').forEach(m => m.remove());
+    _openMenuBtn = null;
+    if (alreadyOpen) return;
+
+    const menu = el('div', { class: 'ft-plus-menu' });
+
+    items.forEach(({ label, icon, onClick, danger, divider }) => {
+      if (divider) {
+        menu.appendChild(el('div', { class: 'ft-plus-menu-divider' }));
+        return;
+      }
+      const iconEl = el('i', { class: icon, 'aria-hidden': 'true' });
+      const it = el('button', { class: `ft-plus-menu-item${danger ? ' ft-plus-menu-item--danger' : ''}` });
+      it.appendChild(iconEl);
+      it.appendChild(document.createTextNode(label));
       it.addEventListener('click', () => { try { onClick(); } finally { cleanup(); } });
       menu.appendChild(it);
     });
+
     document.body.appendChild(menu);
-    function cleanup() { menu.remove(); document.removeEventListener('click', onDoc); }
+    _openMenuBtn = anchorBtn;
+
+    // Position below the anchor, flip upward if it would overflow
+    const rect = anchorBtn.getBoundingClientRect();
+    const menuH = menu.offsetHeight || 200;
+    const spaceBelow = window.innerHeight - rect.bottom - 8;
+    if (spaceBelow < menuH && rect.top > menuH) {
+      menu.style.top  = `${rect.top - menuH - 4}px`;
+    } else {
+      menu.style.top  = `${rect.bottom + 4}px`;
+    }
+    // Align left with the button, clamp so it doesn't overflow the right edge
+    const menuW = menu.offsetWidth || 220;
+    const left  = Math.min(rect.left, window.innerWidth - menuW - 8);
+    menu.style.left = `${Math.max(8, left)}px`;
+
+    function cleanup() { menu.remove(); _openMenuBtn = null; document.removeEventListener('click', onDoc, true); }
     function onDoc(e) { if (!menu.contains(e.target) && e.target !== anchorBtn) cleanup(); }
-    setTimeout(() => document.addEventListener('click', onDoc), 0);
-  }  
+    setTimeout(() => document.addEventListener('click', onDoc, true), 0);
+  }
+
+  async function confirmDelete(kind, company, location, assetType) {
+    const labels = {
+      company:  `company "${company}"`,
+      location: `location "${location}"`,
+      asset:    `asset type "${assetType}"`,
+    };
+    const confirmed = window.confirm(`Delete ${labels[kind]}? This cannot be undone.`);
+    if (!confirmed) return;
+    try {
+      if (kind === 'company')  await window.electronAPI.deleteCompany(company);
+      if (kind === 'location') await window.electronAPI.deleteLocation(company, location);
+      if (kind === 'asset')    await window.electronAPI.deleteAssetType(company, location, assetType);
+      // Rebuild the filter tree
+      build();
+    } catch (err) {
+      console.error('[filters] delete failed:', err);
+      window.alert(`Delete failed: ${err.message || err}`);
+    }
+  }
 
   function wireActions(root) {
-    // [+] opens the appropriate creation UI (company/location/asset)
     root.querySelectorAll('.ft-actions .ft-plus').forEach(btn => {
       if (btn.dataset.bound) return;
       btn.addEventListener('click', (e) => {
+        e.stopPropagation();
         const wrap = e.currentTarget.closest('.ft-actions');
-        const kind = wrap?.dataset.kind;
-        const company = wrap?.dataset.company || '';
+        const kind     = wrap?.dataset.kind     || '';
+        const company  = wrap?.dataset.company  || '';
         const location = wrap?.dataset.location || '';
         const assetType = wrap?.dataset.assetType || '';
-        if (kind === 'company' && window.openCreateLocationForm) {
-          window.openCreateLocationForm(company);
-        } else if (kind === 'location' && window.openCreateAssetsWizard) {
-          window.openCreateAssetsWizard(company, location);
+
+        const items = [];
+
+        if (kind === 'company') {
+          items.push({
+            label: 'Add Location',
+            icon: 'fa-solid fa-plus',
+            onClick: () => window.openCreateLocationForm && window.openCreateLocationForm(company),
+          });
+          items.push({ divider: true });
+          items.push({
+            label: 'Edit Company',
+            icon: 'fa-solid fa-pen',
+            onClick: () => window.openEditCompanyForm
+              ? window.openEditCompanyForm(company)
+              : console.warn('[filters] openEditCompanyForm not implemented'),
+          });
+          items.push({
+            label: 'Delete Company',
+            icon: 'fa-solid fa-trash-can',
+            danger: true,
+            onClick: () => confirmDelete('company', company, null, null),
+          });
+
+        } else if (kind === 'location') {
+          items.push({
+            label: 'Add Asset Type',
+            icon: 'fa-solid fa-plus',
+            onClick: () => window.openCreateAssetsWizard && window.openCreateAssetsWizard(company, location),
+          });
+          items.push({ divider: true });
+          items.push({
+            label: 'Edit Location',
+            icon: 'fa-solid fa-pen',
+            onClick: () => window.openEditLocationForm
+              ? window.openEditLocationForm(company, location)
+              : console.warn('[filters] openEditLocationForm not implemented'),
+          });
+          items.push({
+            label: 'Delete location',
+            icon: 'fa-solid fa-trash-can',
+            danger: true,
+            onClick: () => confirmDelete('location', company, location, null),
+          });
+
         } else if (kind === 'asset') {
-          // Two choices: Import from Excel, or Manually add instance
-          showPlusMenu(e.currentTarget, [
-            {
-              label: 'Import from Excel…',
-              onClick: () => window.openImportMoreForAsset && window.openImportMoreForAsset(company, location, assetType)
-            },
-            {
-              label: 'Manually add an instance…',
-              onClick: () => window.openManualInstanceWizard && window.openManualInstanceWizard(company, location, assetType)
-            }
-          ]);
+          items.push({
+            label: 'Add Asset',
+            icon: 'fa-solid fa-circle-plus',
+            onClick: () => window.openManualInstanceWizard && window.openManualInstanceWizard(company, location, assetType),
+          });
+          items.push({
+            label: 'Import Assets from Excel',
+            icon: 'fa-solid fa-file-excel',
+            onClick: () => window.openImportMoreForAsset && window.openImportMoreForAsset(company, location, assetType),
+          });
+          items.push({ divider: true });
+          items.push({
+            label: 'Edit Asset Type',
+            icon: 'fa-solid fa-pen',
+            onClick: () => window.openEditAssetTypeForm
+              ? window.openEditAssetTypeForm(company, location, assetType)
+              : console.warn('[filters] openEditAssetTypeForm not implemented'),
+          });
+          items.push({
+            label: 'Delete Asset Type',
+            icon: 'fa-solid fa-trash-can',
+            danger: true,
+            onClick: () => confirmDelete('asset', company, location, assetType),
+          });
         }
+
+        if (items.length) showPlusMenu(e.currentTarget, items);
       });
       btn.dataset.bound = '1';
     });
