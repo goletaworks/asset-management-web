@@ -319,7 +319,7 @@
     menu.style.left = `${Math.max(8, left)}px`;
 
     function cleanup() { menu.remove(); _openMenuBtn = null; document.removeEventListener('click', onDoc, true); }
-    function onDoc(e) { if (!menu.contains(e.target) && e.target !== anchorBtn) cleanup(); }
+    function onDoc(e) { if (!menu.contains(e.target) && !anchorBtn.contains(e.target)) cleanup(); }
     setTimeout(() => document.addEventListener('click', onDoc, true), 0);
   }
 
