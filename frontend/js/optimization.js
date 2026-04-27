@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (navOpt && !navOpt._wired) {
     navOpt.addEventListener('click', (e) => {
       e.preventDefault();
+      if (typeof window.canAccessCompanyViews === 'function' && !window.canAccessCompanyViews('Optimization')) return;
       showOptimization();
     });
     navOpt._wired = true;
@@ -41,6 +42,43 @@ document.addEventListener('DOMContentLoaded', () => {
     return out;
   }
 
+  function getOptimizationScope() {
+    return (typeof window.getHierarchySelectionContext === 'function')
+      ? window.getHierarchySelectionContext()
+      : null;
+  }
+
+  function stationMatchesScope(station) {
+    if (typeof window.stationMatchesHierarchyScope === 'function') {
+      return window.stationMatchesHierarchyScope(station, getOptimizationScope());
+    }
+    return true;
+  }
+
+  function filterStationsByScope(stations) {
+    return (stations || []).filter(st => stationMatchesScope(st));
+  }
+
+  function filterRepairsByScope(repairs, scopedStations) {
+    const stationIds = new Set((scopedStations || [])
+      .map(s => String(s.station_id || s['Station ID'] || '').trim())
+      .filter(Boolean));
+    if (!stationIds.size) return [];
+    return (repairs || []).filter(r => stationIds.has(String(r.station_id || r['Station ID'] || '').trim()));
+  }
+
+  async function getScopedStationData() {
+    const stations = await window.electronAPI.getStationData();
+    return filterStationsByScope(stations);
+  }
+
+  async function getScopedRepairs(scopedStations = null) {
+    const repairs = await window.electronAPI.getAllRepairs();
+    if (window._testMode && window._testRepairs) return repairs;
+    const stations = scopedStations || await getScopedStationData();
+    return filterRepairsByScope(repairs, stations);
+  }
+
   // Parse split strings like "50%F-50%P", "100%P(OTH)", "84%H-192%W(D"
   // Returns an array of source tokens, e.g., ["F","P"], ["P(OTH)"], ["H","W(D"]
   function parseSplitSources(str) {
@@ -60,7 +98,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Collect split sources by scanning O&M / Capital / Decommission columns in repairs
   async function loadAvailableSplitSources() {
     try {
-      const repairs = await window.electronAPI.getAllRepairs();
+      const stations = await getScopedStationData();
+      const repairs = await getScopedRepairs(stations);
       const set = new Set();
       const get = (obj, key) => {
         if (!obj) return undefined;
@@ -143,8 +182,8 @@ if (catalog && (Array.isArray(catalog.repairs) || catalog.sheets)) {
       } else {
         console.warn('[loadAvailableFields] No catalog, using fallback');
         // Fallback...
-        const stations = await window.electronAPI.getStationData();
-        const repairs  = await window.electronAPI.getAllRepairs();
+        const stations = await getScopedStationData();
+        const repairs  = await getScopedRepairs(stations);
         const fieldSet = new Set();
         (stations || []).forEach(st => Object.keys(st).forEach(k => fieldSet.add(k + ' (Station)')));
         (repairs  || []).forEach(rp => Object.keys(rp).forEach(k => fieldSet.add(k + ' (Repairs)')));
@@ -2009,7 +2048,8 @@ function _mergeSplitMaps(...maps) {
           allRepairs = window._testRepairs;
           console.log('[Opt-1] Using TEST repairs:', allRepairs.length);
         } else {
-          allRepairs = await window.electronAPI.getAllRepairs();
+          const scopedStations = await getScopedStationData();
+          allRepairs = await getScopedRepairs(scopedStations);
         }
 
         if (!allRepairs || !allRepairs.length) {
@@ -2020,7 +2060,7 @@ function _mergeSplitMaps(...maps) {
         // Get station data for matching (skip if TEST mode - no station data needed)
         let stationDataMap = {};
         if (!window._testMode || !window._testRepairs) {
-          const stationList = await window.electronAPI.getStationData();
+          const stationList = await getScopedStationData();
           (stationList || []).forEach(station => {
             const stationId = station.station_id || station['Station ID'] || station.id;
             if (stationId) stationDataMap[stationId] = station;
@@ -2360,7 +2400,7 @@ function _mergeSplitMaps(...maps) {
           return;
         }
 
-        const stationList = await window.electronAPI.getStationData();
+        const stationList = await getScopedStationData();
         const stationDataMap = {};
         (stationList || []).forEach(station => {
           const stationId = station.station_id || station['Station ID'] || station.id;
@@ -2401,7 +2441,7 @@ function _mergeSplitMaps(...maps) {
         return;
       }
 
-      const stationList = await window.electronAPI.getStationData();
+      const stationList = await getScopedStationData();
       const stationDataMap = {};
       (stationList || []).forEach(station => {
         const stationId = station.station_id || station['Station ID'] || station.id;
@@ -2877,7 +2917,7 @@ function _mergeSplitMaps(...maps) {
         // cache for later interactive updates
         window._opt3Result = result;
         // station data map for nested rendering + add-to-year
-        const stationList = await window.electronAPI.getStationData();
+        const stationList = await getScopedStationData();
         window._stationDataMap = {};
         (stationList || []).forEach(station => {
           const stationId = station.station_id || station['Station ID'] || station.id;
@@ -2904,7 +2944,7 @@ function _mergeSplitMaps(...maps) {
       const topPercent = 0;
 
       // Get station data for constraint checks
-      const stationList = await window.electronAPI.getStationData();
+      const stationList = await getScopedStationData();
       const stationDataMap = {};
       (stationList || []).forEach(station => {
         const stationId = station.station_id || station['Station ID'] || station.id;
@@ -2959,7 +2999,7 @@ function _mergeSplitMaps(...maps) {
       console.log(`[Opt3 Dynamic] Look-ahead: ${lookAheadPercent}% of ${totalRepairs} = ${lookAheadLimit} repairs`);
 
       // Get station data for constraint checks
-      const stationList = await window.electronAPI.getStationData();
+      const stationList = await getScopedStationData();
       const stationDataMap = {};
       (stationList || []).forEach(station => {
         const stationId = station.station_id || station['Station ID'] || station.id;

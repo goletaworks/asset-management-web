@@ -178,9 +178,60 @@
     try {
       document.querySelectorAll('.left-panel .nav-item').forEach(li => li.classList.remove('active'));
       const el = document.getElementById(activeId);
-      if (el) el.classList.add('active');
+      if (el && !el.classList.contains('is-disabled')) el.classList.add('active');
     } catch (_) {}
   }
+
+  const COMPANY_GATED_NAV_IDS = ['navMap', 'navList', 'navDash', 'navOpt', 'navMaterials'];
+
+  function getCompanyGateState() {
+    const filterTree = document.getElementById('filterTree');
+    const companies = filterTree ? Array.from(filterTree.querySelectorAll('input.filter-checkbox.company')) : [];
+    const checkedCompanies = companies.filter(cb => cb.checked);
+    return {
+      hasCompanies: companies.length > 0,
+      selectedCompanyId: checkedCompanies.length === 1 ? (checkedCompanies[0].dataset.company || checkedCompanies[0].value || null) : null,
+      isLocked: companies.length === 0
+    };
+  }
+
+  function applyNavGateUI(state = getCompanyGateState()) {
+    const locked = !!state?.isLocked;
+    COMPANY_GATED_NAV_IDS.forEach(id => {
+      const nav = document.getElementById(id);
+      if (!nav) return;
+      nav.classList.toggle('is-disabled', locked);
+      nav.setAttribute('aria-disabled', locked ? 'true' : 'false');
+      if (locked) nav.title = 'Create a company first';
+      else nav.removeAttribute('title');
+    });
+    return state;
+  }
+
+  function guardCompanyRequired(targetView = 'this view') {
+    const state = applyNavGateUI();
+    if (!state.hasCompanies || state.isLocked) {
+      const msg = 'Create a company first before using Map, List, Dashboard, Optimization, or Materials Manager.';
+      try {
+        if (typeof window.appAlert === 'function') window.appAlert(msg);
+        else if (typeof appAlert === 'function') appAlert(msg);
+      } catch (_) {}
+      return false;
+    }
+    if (!state.selectedCompanyId) {
+      const msg = `Select exactly one company to open ${targetView}.`;
+      try {
+        if (typeof window.appAlert === 'function') window.appAlert(msg);
+        else if (typeof appAlert === 'function') appAlert(msg);
+      } catch (_) {}
+      return false;
+    }
+    return true;
+  }
+
+  const refreshCompanyGateState = debounce(() => {
+    applyNavGateUI();
+  }, 40);
 
   // Throttled filter refresh so every tab switch re-syncs the LHS tree.
   const queueFilterRefresh = (() => {
@@ -193,6 +244,15 @@
       }, 25);
     };
   })();
+
+  function refreshScopeHeaderLabel() {
+    const el = document.getElementById('selectedScopeLabel');
+    if (!el) return;
+    const scope = typeof window.getHierarchySelectionContext === 'function'
+      ? window.getHierarchySelectionContext()
+      : null;
+    el.textContent = scope?.label || 'No company selected';
+  }
 
   // Notify listeners (settings colors, filters, etc.) that lookup data changed.
   function broadcastLookupChange() {
@@ -270,6 +330,7 @@
   }
 
   async function showMapView() {
+    if (!guardCompanyRequired('Map View')) return;
     setActiveNav('navMap');
     showViews({ map: true, list: false, docs: false, wizard: false, settings: false });
     safeDisableFullWidthMode();
@@ -288,6 +349,7 @@
   }
 
   async function showListView() {
+    if (!guardCompanyRequired('List View')) return;
     setActiveNav('navList');
     showViews({ map: false, list: true, docs: false, wizard: false, settings: false });
     safeDisableFullWidthMode();
@@ -373,6 +435,7 @@
   }
 
   async function showOptView() {
+    if (!guardCompanyRequired('Optimization')) return;
     setActiveNav('navOpt');
     showViews({ map: false, list: false, docs: true, wizard: false, settings: false });
     // Optimization/dashboard docs should be full-width; no RHS gutter
@@ -383,6 +446,7 @@
   }
 
   async function showMaterialsManagerView() {
+    if (!guardCompanyRequired('Materials Manager')) return;
     setActiveNav('navMaterials');
     showViews({ map: false, list: false, docs: false, wizard: false, settings: false, materials: true });
     safeEnableFullWidthMode();
@@ -411,6 +475,7 @@
   }
 
   async function showStatisticsView() {
+    if (!guardCompanyRequired('Dashboard')) return;
     setActiveNav('navDash'); // "Statistics" has become "Dashboard"
     showViews({ map: false, list: false, docs: false, wizard: false, settings: false, stats: true });
     safeEnableFullWidthMode();
@@ -463,6 +528,8 @@
 
   // Create Company panel
   async function openCreateCompanyForm() {
+    const mapCatalog = window.CompanyMapCatalog || {};
+    const defaultScope = mapCatalog.defaultWorldScope || { type: 'continent', key: 'north-america', label: 'North America', center: [46, -98], zoom: 3 };
     const view = `
       <div class="panel-form">
         <h2 style="margin-top:0;">Create Company</h2>
@@ -478,6 +545,34 @@
           <label>Company Email*</label>
           <input type="email" id="coEmail" placeholder="" />
         </div>
+        <div class="form-row">
+          <label>Map Mode*</label>
+          <select id="coMapMode">
+            <option value="world">World map</option>
+            <option value="blueprint">Blueprint / Image / PDF</option>
+          </select>
+        </div>
+        <div id="coWorldScopeWrap">
+          <div class="form-row">
+            <label>World Scope Type*</label>
+            <select id="coWorldType">
+              <option value="continent">Continent</option>
+              <option value="country">Country</option>
+              <option value="us_state">US State</option>
+              <option value="canada_province">Canada Province/Territory</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>Default Map Region*</label>
+            <select id="coWorldRegion"></select>
+          </div>
+        </div>
+        <div id="coBlueprintWrap" style="display:none;">
+          <div class="form-row">
+            <label>Blueprint/Image/PDF*</label>
+            <input type="file" id="coBlueprintFile" accept=".png,.jpg,.jpeg,.webp,.gif,.bmp,.pdf,application/pdf,image/*" />
+          </div>
+        </div>
         <div class="wizard-footer" style="justify-content:flex-end;">
           <button id="btnCancel" class="btn btn-ghost">Cancel</button>
           <button id="btnSave" class="btn btn-primary">Save</button>
@@ -487,21 +582,108 @@
     if (!host) return;
 
     const $ = sel => host.querySelector(sel);
+    const coMapMode = $('#coMapMode');
+    const coWorldType = $('#coWorldType');
+    const coWorldRegion = $('#coWorldRegion');
+    const coWorldScopeWrap = $('#coWorldScopeWrap');
+    const coBlueprintWrap = $('#coBlueprintWrap');
+
+    function renderWorldScopeOptions() {
+      if (!coWorldRegion) return;
+      const type = coWorldType?.value || 'continent';
+      const options = (mapCatalog.byType && mapCatalog.byType[type]) || [];
+      coWorldRegion.innerHTML = options
+        .map(opt => `<option value="${opt.key}">${opt.label}</option>`)
+        .join('');
+      if (type === defaultScope.type) coWorldRegion.value = defaultScope.key;
+      if (!coWorldRegion.value && options[0]) coWorldRegion.value = options[0].key;
+    }
+
+    function syncMapModeUI() {
+      const isBlueprint = coMapMode?.value === 'blueprint';
+      if (coWorldScopeWrap) coWorldScopeWrap.style.display = isBlueprint ? 'none' : '';
+      if (coBlueprintWrap) coBlueprintWrap.style.display = isBlueprint ? '' : 'none';
+    }
+
+    renderWorldScopeOptions();
+    syncMapModeUI();
+    coMapMode?.addEventListener('change', syncMapModeUI);
+    coWorldType?.addEventListener('change', renderWorldScopeOptions);
+    const btnSave = $('#btnSave');
     $('#btnCancel')?.addEventListener('click', () => closePanel());
-    $('#btnSave')?.addEventListener('click', async () => {
-      const name = ($('#coName')?.value || '').trim();
-      if (!name) return appAlert('Please enter a company name.');
-
-      const desc = ($('#coDesc')?.value || '').trim();
-      const email = ($('#coEmail')?.value || '').trim();
-
+    btnSave?.addEventListener('click', async () => {
+      if (btnSave.disabled) return;
       try {
-        const res = await window.electronAPI.upsertCompany(name, true, desc, email);
+        btnSave.disabled = true;
+        btnSave.textContent = 'Saving...';
+        const name = ($('#coName')?.value || '').trim();
+        if (!name) return appAlert('Please enter a company name.');
+
+        const desc = ($('#coDesc')?.value || '').trim();
+        const email = ($('#coEmail')?.value || '').trim();
+        const mapMode = coMapMode?.value === 'blueprint' ? 'blueprint' : 'world';
+        let mapProfile = {
+          mode: 'world',
+          worldScope: { ...defaultScope },
+          blueprintAsset: null,
+        };
+        if (mapMode === 'world') {
+          const scopeType = coWorldType?.value || defaultScope.type;
+          const scopeKey = coWorldRegion?.value || defaultScope.key;
+          const picked = mapCatalog.getScope ? mapCatalog.getScope(scopeType, scopeKey) : null;
+          if (!picked) return appAlert('Please choose a valid world region.');
+          mapProfile = { mode: 'world', worldScope: picked, blueprintAsset: null };
+        } else {
+          const file = $('#coBlueprintFile')?.files?.[0];
+          if (!file) return appAlert('Please upload a blueprint/image/PDF file.');
+          let uploadedAsset = null;
+          try {
+            const uploadPromise = window.electronAPI.uploadCompanyMapAsset(name, file);
+            const upload = await Promise.race([
+              uploadPromise,
+              new Promise(resolve => setTimeout(() => resolve({ success: false, message: 'Upload timed out.' }), 8000)),
+            ]);
+            if (upload && upload.success !== false && upload.blueprintAsset?.path) {
+              uploadedAsset = upload.blueprintAsset;
+            } else if (upload?.message) {
+              console.warn('[CreateCompany] map asset upload failed, using fallback:', upload.message);
+            }
+          } catch (uploadErr) {
+            console.warn('[CreateCompany] map asset upload route unavailable, using fallback', uploadErr);
+          }
+
+          if (!uploadedAsset) {
+            const fileDataB64 = await new Promise((resolve, reject) => {
+              const fr = new FileReader();
+              fr.onload = () => {
+                const txt = String(fr.result || '');
+                const idx = txt.indexOf(',');
+                resolve(idx >= 0 ? txt.slice(idx + 1) : txt);
+              };
+              fr.onerror = () => {
+                reject(fr.error || new Error('Failed to read blueprint file.'));
+              };
+              fr.readAsDataURL(file);
+            });
+            uploadedAsset = {
+              fileName: file.name || 'map-asset',
+              mimeType: file.type || 'application/octet-stream',
+              inlineBase64: fileDataB64,
+            };
+          }
+          mapProfile = { mode: 'blueprint', worldScope: null, blueprintAsset: uploadedAsset };
+        }
+        const res = await window.electronAPI.upsertCompany(name, true, desc, email, mapProfile);
         if (!res || res.success === false) return appAlert(res?.message || 'Failed to create company.');
         await window.refreshFilters?.();
         closePanel();
       } catch (e) {
         console.error('[CreateCompany] failed', e); appAlert('Unexpected error.');
+      } finally {
+        if (btnSave) {
+          btnSave.disabled = false;
+          btnSave.textContent = 'Save';
+        }
       }
     });
   }
@@ -561,7 +743,7 @@
   }
 
   // Manual Instance Wizard
-  async function openManualInstanceWizard(company, location, assetType, { lat: prefillLat, lon: prefillLon } = {}) {
+  async function openManualInstanceWizard(company, location, assetType, { lat: prefillLat, lon: prefillLon, blueprintX: prefillBlueprintX, blueprintY: prefillBlueprintY, coordinateMode: prefillCoordinateMode } = {}) {
     const view = `
       <div class="panel-form" id="manualPanel">
         <h2 style="margin-top:0;">Add ${assetType ? `“${assetType}”` : 'Asset'} Manually</h2>
@@ -586,12 +768,20 @@
             <input type="text" id="mSiteName" placeholder="e.g., River Bridge" />
           </div>
           <div class="form-row">
-            <label>Latitude*</label>
+            <label id="mLatLabel">Latitude*</label>
             <input type="text" id="mLat" placeholder="e.g., 49.2827" />
           </div>
           <div class="form-row">
-            <label>Longitude*</label>
+            <label id="mLonLabel">Longitude*</label>
             <input type="text" id="mLon" placeholder="e.g., -123.1207" />
+          </div>
+          <div class="form-row" id="mBlueprintXRow" style="display:none;">
+            <label id="mBlueprintXLabel">Blueprint X (%)*</label>
+            <input type="text" id="mBlueprintX" placeholder="0-100" />
+          </div>
+          <div class="form-row" id="mBlueprintYRow" style="display:none;">
+            <label id="mBlueprintYLabel">Blueprint Y (%)*</label>
+            <input type="text" id="mBlueprintY" placeholder="0-100" />
           </div>
           <div class="form-row">
             <label>Status*</label>
@@ -633,12 +823,39 @@
     // Pre-fill lat/lon when provided (e.g. from map right-click)
     if (prefillLat != null) $('#mLat').value = prefillLat;
     if (prefillLon != null) $('#mLon').value = prefillLon;
+    if (prefillBlueprintX != null) $('#mBlueprintX').value = prefillBlueprintX;
+    if (prefillBlueprintY != null) $('#mBlueprintY').value = prefillBlueprintY;
 
     // When context is not pre-set, replace the read-only card with cascading dropdowns
     const hasContext = !!(company && location && assetType);
     let selectedCompany = company || '';
     let selectedLocation = location || '';
     let selectedAssetType = assetType || '';
+    let coordinateMode = prefillCoordinateMode === 'blueprint' ? 'blueprint' : 'world';
+
+    function applyCoordinateMode(mode) {
+      coordinateMode = mode === 'blueprint' ? 'blueprint' : 'world';
+      const isBlueprint = coordinateMode === 'blueprint';
+      $('#mBlueprintXRow').style.display = isBlueprint ? '' : 'none';
+      $('#mBlueprintYRow').style.display = isBlueprint ? '' : 'none';
+      $('#mLatLabel').textContent = isBlueprint ? 'Latitude (optional)' : 'Latitude*';
+      $('#mLonLabel').textContent = isBlueprint ? 'Longitude (optional)' : 'Longitude*';
+      $('#mLat').placeholder = isBlueprint ? 'Optional' : 'e.g., 49.2827';
+      $('#mLon').placeholder = isBlueprint ? 'Optional' : 'e.g., -123.1207';
+    }
+
+    async function resolveCompanyCoordinateMode(companyName) {
+      if (!companyName) return 'world';
+      try {
+        const tree = await window.electronAPI.getLookupTree();
+        const companies = Array.isArray(tree?.companies) ? tree.companies : [];
+        const selected = companies.find(c => (typeof c === 'string' ? c : c?.name) === companyName);
+        const profile = selected && typeof selected === 'object' ? selected.mapProfile : null;
+        return profile?.mode === 'blueprint' ? 'blueprint' : 'world';
+      } catch (_) {
+        return 'world';
+      }
+    }
 
     if (!hasContext) {
       const card = host.querySelector('.card');
@@ -679,6 +896,7 @@
 
       mCompany.addEventListener('change', async () => {
         selectedCompany = mCompany.value;
+        applyCoordinateMode(await resolveCompanyCoordinateMode(selectedCompany));
         selectedLocation = '';
         selectedAssetType = '';
         mAssetType.innerHTML = '<option value="">Select location first\u2026</option>';
@@ -731,7 +949,11 @@
       mAssetType.addEventListener('change', () => {
         selectedAssetType = mAssetType.value;
       });
+    } else {
+      applyCoordinateMode(await resolveCompanyCoordinateMode(selectedCompany));
     }
+
+    if (!hasContext) applyCoordinateMode(coordinateMode);
 
     const sectionsHost = $('#mSectionsEditor');
 
@@ -853,11 +1075,17 @@
       const siteName  = ($('#mSiteName')?.value || '').trim();
       const lat       = ($('#mLat')?.value || '').trim();
       const lon       = ($('#mLon')?.value || '').trim();
-      if (!stationId || !siteName || !lat || !lon) {
-        return appAlert('Please fill Station ID, Site Name, Latitude, and Longitude.');
+      const blueprintX = ($('#mBlueprintX')?.value || '').trim();
+      const blueprintY = ($('#mBlueprintY')?.value || '').trim();
+      if (!stationId || !siteName) {
+        return appAlert('Please fill Station ID and Site Name.');
       }
-      if (isNaN(Number(lat)) || isNaN(Number(lon))) {
-        return appAlert('Latitude and Longitude must be numeric.');
+      if (coordinateMode === 'blueprint') {
+        if (!blueprintX || !blueprintY) return appAlert('Blueprint X and Blueprint Y are required.');
+        if (isNaN(Number(blueprintX)) || isNaN(Number(blueprintY))) return appAlert('Blueprint X and Y must be numeric.');
+      } else {
+        if (!lat || !lon) return appAlert('Please fill Latitude and Longitude.');
+        if (isNaN(Number(lat)) || isNaN(Number(lon))) return appAlert('Latitude and Longitude must be numeric.');
       }
 
       // switch steps
@@ -901,15 +1129,25 @@
           siteName:  ($('#mSiteName')?.value || '').trim(),
           lat:       ($('#mLat')?.value || '').trim(),
           lon:       ($('#mLon')?.value || '').trim(),
+          blueprintX: ($('#mBlueprintX')?.value || '').trim(),
+          blueprintY: ($('#mBlueprintY')?.value || '').trim(),
+          coordinateMode,
           status:    ($('#mStatus')?.value || 'UNKNOWN').trim()
         },
         extras: []
       };
 
-      if (!payload.general.stationId || !payload.general.siteName || !payload.general.lat || !payload.general.lon) {
+      if (!payload.general.stationId || !payload.general.siteName) {
         return appAlert('General Information is incomplete.');
       }
-      if (isNaN(Number(payload.general.lat)) || isNaN(Number(payload.general.lon))) {
+      if (coordinateMode === 'blueprint') {
+        if (!payload.general.blueprintX || !payload.general.blueprintY) {
+          return appAlert('Blueprint X/Y are required in blueprint mode.');
+        }
+        if (isNaN(Number(payload.general.blueprintX)) || isNaN(Number(payload.general.blueprintY))) {
+          return appAlert('Blueprint X/Y must be numeric.');
+        }
+      } else if (isNaN(Number(payload.general.lat)) || isNaN(Number(payload.general.lon))) {
         return appAlert('Latitude and Longitude must be numeric.');
       }
 
@@ -1746,6 +1984,17 @@
     
     // Initial restoration check
     if (!isDocsActive()) restoreRHSPanel();
+    applyNavGateUI();
+    window.addEventListener('company-gate:update', refreshCompanyGateState);
+    window.addEventListener('hierarchy-scope:changed', refreshScopeHeaderLabel);
+    window.addEventListener('lookups:changed', refreshCompanyGateState);
+    window.addEventListener('lookups-changed', refreshCompanyGateState);
+    const filterTree = document.getElementById('filterTree');
+    if (filterTree) {
+      filterTree.addEventListener('change', refreshCompanyGateState);
+      filterTree.addEventListener('change', refreshScopeHeaderLabel);
+    }
+    setTimeout(refreshScopeHeaderLabel, 50);
 
     const navNewCompany = document.getElementById('navNewCompany');
     if (navNewCompany && !navNewCompany.dataset.boundNew) {
@@ -1823,5 +2072,8 @@
   window.showMaterialsManagerView = window.showMaterialsManagerView || showMaterialsManagerView;
   window.showStatisticsView = window.showStatisticsView || showStatisticsView;
   window.showSettingsView = window.showSettingsView || showSettingsView;
+  window.canAccessCompanyViews = window.canAccessCompanyViews || guardCompanyRequired;
+  window.getCompanyGateState = window.getCompanyGateState || getCompanyGateState;
+  window.applyCompanyGateUI = window.applyCompanyGateUI || applyNavGateUI;
 
 })();

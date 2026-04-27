@@ -138,8 +138,8 @@ module.exports = {
   // Lookups workbook
   ensureLookupsReady:   () => call('ensureLookupsReady'),
   readLookupsSnapshot:  () => call('readLookupsSnapshot'),
-  upsertCompany:        (name, active, description, email) =>
-    call('upsertCompany', name, !!active, description, email),
+  upsertCompany:        (name, active, description, email, mapProfile = null) =>
+    call('upsertCompany', name, !!active, description, email, mapProfile),
   upsertLocation:       (location, company) => call('upsertLocation', location, company),
   upsertAssetType:      (assetType, company, location) => call('upsertAssetType', assetType, company, location),
   setAssetTypeColor:    (assetType, color) => call('setAssetTypeColor', assetType, color),

@@ -49,9 +49,10 @@ class IPersistence {
    * @param {boolean} active - Active status
    * @param {string} description - Description
    * @param {string} email - Email
+   * @param {Object|null} mapProfile - Company map profile
    * @returns {Promise<Object>} - { success: boolean, message?: string }
    */
-  async upsertCompany(name, active = true, description = '', email = '') {
+  async upsertCompany(name, active = true, description = '', email = '', mapProfile = null) {
     throw new Error('Method "upsertCompany()" must be implemented');
   }
 

@@ -1,4 +1,4 @@
-﻿// backend/app.js
+// backend/app.js
 const fs = require('fs');
 const fsp = fs.promises;
 const { pathToFileURL } = require('url');
@@ -332,6 +332,8 @@ function normalizeRow(r) {
     province:   r['Province']  ?? r['province'] ?? '',
     lat:        r['Latitude']  ?? r['lat'] ?? '',
     lon:        r['Longitude'] ?? r['lon'] ?? '',
+    blueprint_x: r['Blueprint X'] ?? r['blueprint_x'] ?? r['blueprintX'] ?? '',
+    blueprint_y: r['Blueprint Y'] ?? r['blueprint_y'] ?? r['blueprintY'] ?? '',
     status:     r['Status']    ?? r['status'] ?? '',
   };
   Object.keys(r).forEach(k => { if (k.includes(' – ')) out[k] = r[k]; });
@@ -474,12 +476,27 @@ async function manualAddInstance(payload = {}) {
     const name= String(gi.siteName  || '').trim();
     const lat = String(gi.lat       || '').trim();
     const lon = String(gi.lon       || '').trim();
+    const blueprintX = String(gi.blueprintX || '').trim();
+    const blueprintY = String(gi.blueprintY || '').trim();
+    const coordinateMode = String(gi.coordinateMode || '').trim().toLowerCase() === 'blueprint' ? 'blueprint' : 'world';
     const status = String(gi.status || 'UNKNOWN').trim();
-    if (!sid || !name || !lat || !lon) {
-      return { success:false, message:'Station ID, Site Name, Latitude, and Longitude are required.' };
+    if (!sid || !name) {
+      return { success:false, message:'Station ID and Site Name are required.' };
     }
-    if (isNaN(Number(lat)) || isNaN(Number(lon))) {
-      return { success:false, message:'Latitude and Longitude must be numeric.' };
+    if (coordinateMode === 'blueprint') {
+      if (!blueprintX || !blueprintY) {
+        return { success:false, message:'Blueprint X and Blueprint Y are required in blueprint mode.' };
+      }
+      if (isNaN(Number(blueprintX)) || isNaN(Number(blueprintY))) {
+        return { success:false, message:'Blueprint X and Blueprint Y must be numeric.' };
+      }
+    } else {
+      if (!lat || !lon) {
+        return { success:false, message:'Latitude and Longitude are required in world map mode.' };
+      }
+      if (isNaN(Number(lat)) || isNaN(Number(lon))) {
+        return { success:false, message:'Latitude and Longitude must be numeric.' };
+      }
     }
 
     // Ensure lookup rows exist
@@ -493,7 +510,7 @@ async function manualAddInstance(payload = {}) {
     }
 
     // Build minimal two-row header set (GI anchors + extras)
-    const giFields = ['Station ID','Category','Site Name','Province','Latitude','Longitude','Status'];
+    const giFields = ['Station ID','Category','Site Name','Province','Latitude','Longitude','Blueprint X','Blueprint Y','Status'];
     const headers = giFields.slice();
     const sections = giFields.map(() => 'General Information');
     for (const x of extras) {
@@ -512,6 +529,8 @@ async function manualAddInstance(payload = {}) {
       'Province': location,                  // Province comes from chosen location
       'Latitude': lat,
       'Longitude': lon,
+      'Blueprint X': blueprintX,
+      'Blueprint Y': blueprintY,
       'Status': status
     };
     for (const x of extras) {
@@ -878,8 +897,8 @@ async function appendRepair(payload = {}) {
 // ──────────────────────────────────────────────────────────────────────────────
 // Materials Manager (Excel + Mongo dual-write)
 // ──────────────────────────────────────────────────────────────────────────────
-async function upsertCompanyWithMaterials(name, active, description, email) {
-  const res = await lookupsRepo.upsertCompany(name, active, description, email);
+async function upsertCompanyWithMaterials(name, active, description, email, mapProfile = null) {
+  const res = await lookupsRepo.upsertCompany(name, active, description, email, mapProfile);
   if (res && res.success !== false) {
     try {
       await materialsManager.ensureCompanyWorkbook(name);

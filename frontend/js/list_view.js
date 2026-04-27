@@ -119,11 +119,17 @@
   // Data → filtered rows (mirrors map_view filter semantics)
   // ────────────────────────────────────────────────────────────────────────────
   function applyFilters(all) {
-    const valid = (all || []).filter(stn => {
+    const scoped = (typeof window.stationMatchesHierarchyScope === 'function')
+      ? (all || []).filter(stn => window.stationMatchesHierarchyScope(stn))
+      : (all || []);
+
+    const valid = scoped.filter(stn => {
       const lat = Number(stn.lat), lon = Number(stn.lon);
       return Number.isFinite(lat) && Number.isFinite(lon) &&
              Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
     });
+
+    if (typeof window.stationMatchesHierarchyScope === 'function') return valid;
 
     // Default: show ALL unless filters are actively restricting
     if (!areFiltersActuallyRestricting()) return valid;

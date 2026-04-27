@@ -61,6 +61,26 @@ function validateFundingOverrideString(value) {
   return { ok: true };
 }
 
+function sanitizeMapProfile(mapProfile) {
+  if (!mapProfile || typeof mapProfile !== 'object') {
+    return {
+      mode: 'world',
+      worldScope: null,
+      blueprintAsset: null,
+    };
+  }
+
+  const mode = mapProfile.mode === 'blueprint' ? 'blueprint' : 'world';
+  const worldScope = mapProfile.worldScope && typeof mapProfile.worldScope === 'object'
+    ? { ...mapProfile.worldScope }
+    : null;
+  const blueprintAsset = mapProfile.blueprintAsset && typeof mapProfile.blueprintAsset === 'object'
+    ? { ...mapProfile.blueprintAsset }
+    : null;
+
+  return { mode, worldScope, blueprintAsset };
+}
+
 const FUNDING_SECTION = 'Funding Type Override Settings';
 const FUNDING_FIELDS = ['O&M', 'Capital', 'Decommission'];
 
@@ -180,15 +200,16 @@ class MongoPersistence extends IPersistence {
     return companies.map(c => c.company);
   }
 
-  async upsertCompany(name, active = true, description = '', email = '') {
+  async upsertCompany(name, active = true, description = '', email = '', mapProfile = null) {
     try {
       const collection = mongoClient.getCollection(COLLECTIONS.COMPANIES);
       const now = new Date();
+      const cleanMapProfile = sanitizeMapProfile(mapProfile);
 
       await collection.updateOne(
         { company: name },
         {
-          $set: { company: name, active, description, email, _updatedAt: now },
+          $set: { company: name, active, description, email, mapProfile: cleanMapProfile, _updatedAt: now },
           $setOnInsert: { _createdAt: now, _source: 'manual' }
         },
         { upsert: true }
@@ -453,7 +474,8 @@ class MongoPersistence extends IPersistence {
       const companies = companiesDocs.map(c => ({
         name: c.company,
         description: c.description || '',
-        email: c.email || ''
+        email: c.email || '',
+        mapProfile: sanitizeMapProfile(c.mapProfile)
       }));
 
       const locsByCompany = {};

@@ -29,6 +29,42 @@
   // Remember explicit user choice for company/location checkboxes
   function setUserChecked(cb, val) { if (cb) cb.dataset.userchecked = val ? '1' : '0'; }
 
+  function notifyCompanyGateUpdate() {
+    try { window.dispatchEvent(new Event('company-gate:update')); } catch (_) {}
+    try { window.dispatchEvent(new Event('hierarchy-scope:changed')); } catch (_) {}
+  }
+
+  function enforceSingleCompanySelection(scope, preferredCompany = null) {
+    const companies = Array.from(scope.querySelectorAll('input.company'));
+    if (!companies.length) return null;
+
+    let active = null;
+    if (preferredCompany) {
+      active = companies.find(cb => (cb.dataset.company || cb.value) === preferredCompany) || null;
+    }
+    if (!active) {
+      active = companies.find(cb => cb.checked) || companies[0];
+    }
+
+    companies.forEach(cb => {
+      const on = cb === active;
+      cb.checked = on;
+      cb.indeterminate = false;
+      setUserChecked(cb, on);
+
+      const details = cb.closest('details.ft-company');
+      if (!details) return;
+      details.querySelectorAll('input.location, input.asset-type').forEach(child => {
+        child.checked = on;
+        child.indeterminate = false;
+      });
+      details.querySelectorAll('input.location').forEach(locCb => setUserChecked(locCb, on));
+    });
+
+    updateTriState(scope);
+    return active;
+  }
+
   async function fetchTree() {
     let treeFromLookups = null;
 
@@ -108,7 +144,7 @@
     return wrap;
   }
 
-  function render(tree) {
+  function render(tree, preferredCompany = null) {
     filterTree.innerHTML = '';
     filterTree.dataset.ready = '0';
 
@@ -210,10 +246,10 @@
 
     filterTree.appendChild(frag);
 
-    // Initialize all checked; remember user intent on parents
-    filterTree.querySelectorAll('input.filter-checkbox').forEach(cb => { cb.checked = true; cb.indeterminate = false; });
-    filterTree.querySelectorAll('input.company, input.location').forEach(cb => setUserChecked(cb, true));
-    updateTriState(filterTree);
+    // Initialize to exactly one selected company (and descendants)
+    filterTree.querySelectorAll('input.filter-checkbox').forEach(cb => { cb.checked = false; cb.indeterminate = false; });
+    enforceSingleCompanySelection(filterTree, preferredCompany);
+    notifyCompanyGateUpdate();
 
     // Wire [+] actions
     wireActions(filterTree);
@@ -221,6 +257,7 @@
     // Signal ready (boot gating)
     requestAnimationFrame(() => {
       filterTree.dataset.ready = '1';
+      notifyCompanyGateUpdate();
       if (!INITIAL_RENDER) {
         filterTree.dispatchEvent(new Event('change', { bubbles: true }));
       } else {
@@ -258,18 +295,14 @@
     });
 
     if (t.classList.contains('company')) {
-      const details = t.closest('details.ft-company');
-      setUserChecked(t, t.checked);
-      if (details) {
-        details.querySelectorAll('input.location, input.asset-type').forEach(cb => { cb.checked = t.checked; cb.indeterminate = false; });
-        details.querySelectorAll('input.location').forEach(locCb => setUserChecked(locCb, t.checked));
-      }
+      enforceSingleCompanySelection(filterTree, t.checked ? (t.dataset.company || t.value) : null);
     } else if (t.classList.contains('location')) {
       const locDet = t.closest('details.ft-location');
       setUserChecked(t, t.checked);
       if (locDet) locDet.querySelectorAll('input.asset-type').forEach(cb => { cb.checked = t.checked; });
     }
     updateTriState(filterTree);
+    notifyCompanyGateUpdate();
     dispatchChange();
   }
 
@@ -325,7 +358,13 @@
     });
   }
 
-  async function build(retryCount = 0) {
+  function getCurrentSelectedCompany() {
+    const current = filterTree.querySelector('input.company:checked');
+    return current ? (current.dataset.company || current.value || null) : null;
+  }
+
+  async function build(retryCount = 0, preferredCompany = null) {
+    const stickyPreferredCompany = preferredCompany || getCurrentSelectedCompany();
     const tree = await fetchTree();
 
     // Check if we actually got companies. 
@@ -334,11 +373,11 @@
 
     if (!hasData && retryCount < 10) {
       console.log(`[filters] Data not ready yet. Retrying (${retryCount + 1}/10)...`);
-      setTimeout(() => build(retryCount + 1), 500); // Wait 500ms and try again
+      setTimeout(() => build(retryCount + 1, stickyPreferredCompany), 500); // Wait 500ms and try again
       return;
     }
 
-    render(tree);
+    render(tree, stickyPreferredCompany);
   }
 
   document.addEventListener('DOMContentLoaded', () => {

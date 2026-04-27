@@ -172,8 +172,8 @@ class DualWritePersistence {
     };
   }
 
-  async upsertCompany(name, active, description, email) {
-    return await this._writeToAll('upsertCompany', name, active, description, email);
+  async upsertCompany(name, active, description, email, mapProfile = null) {
+    return await this._writeToAll('upsertCompany', name, active, description, email, mapProfile);
   }
 
   async upsertLocation(location, company) {

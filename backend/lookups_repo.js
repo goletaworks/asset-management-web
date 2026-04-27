@@ -26,6 +26,11 @@ function uniqSorted(arr) {
 function randHexColor() {
   return '#' + Math.floor(Math.random() * 0xFFFFFF).toString(16).padStart(6, '0');
 }
+function safeSegment(v) {
+  return String(v || '')
+    .replace(/[^a-zA-Z0-9._-]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
 
 // ─── FS-only, synchronous folder bootstrap (no ExcelJS) ───────────────────
 function ensureDataFoldersSync() {
@@ -444,9 +449,17 @@ async function setRepairColorForCompanyLocation(assetType, company, location, co
 }
 
 // ─── Writes / Upserts ─────────────────────────────────────────────────────
-async function upsertCompany(name, active = true, description = '', email = '') {
+async function upsertCompany(name, active = true, description = '', email = '', mapProfile = null) {
+  const cleanProfile = await normalizeCompanyMapProfile(name, mapProfile);
+  if (cleanProfile && cleanProfile.success === false) return cleanProfile;
   const persistence = await getPersistence();
-  const res = await persistence.upsertCompany(name, active, description, email);
+  const res = await persistence.upsertCompany(
+    name,
+    active,
+    description,
+    email,
+    cleanProfile && cleanProfile.mapProfile ? cleanProfile.mapProfile : mapProfile
+  );
   _invalidateAllCaches();
   return res;
 }
@@ -456,6 +469,164 @@ async function upsertLocation(location, company) {
   const res = await persistence.upsertLocation(location, company);
   _invalidateAllCaches();
   return res;
+}
+
+async function saveCompanyMapAsset(company, file = {}) {
+  const cleanCompany = normStr(company);
+  if (!cleanCompany) return { success: false, message: 'Company is required.' };
+  const fileName = safeSegment(file.name || 'map-asset');
+  const mimeType = normStr(file.mimeType) || 'application/octet-stream';
+  const ext = path.extname(fileName) || (mimeType === 'application/pdf' ? '.pdf' : '');
+  const baseName = safeSegment(path.basename(fileName, ext)) || 'map-asset';
+  const storedName = `${Date.now()}-${baseName}${ext}`;
+
+  try {
+    const companyDir = path.join(COMPANIES_DIR, cleanCompany);
+    const assetsDir = path.join(companyDir, 'map-assets');
+    ensureDir(companyDir);
+    ensureDir(assetsDir);
+    const absolutePath = path.join(assetsDir, storedName);
+    fs.writeFileSync(absolutePath, Buffer.from(String(file.data || ''), 'base64'));
+    const relativePath = path.join('companies', cleanCompany, 'map-assets', storedName);
+    return {
+      success: true,
+      blueprintAsset: {
+        path: relativePath.replace(/\\/g, '/'),
+        mimeType,
+        fileName: storedName,
+      }
+    };
+  } catch (e) {
+    return { success: false, message: e.message || String(e) };
+  }
+}
+
+async function normalizeCompanyMapProfile(company, mapProfile = null) {
+  if (!mapProfile || typeof mapProfile !== 'object') {
+    return { success: true, mapProfile: null };
+  }
+  const mode = String(mapProfile.mode || '').toLowerCase() === 'blueprint' ? 'blueprint' : 'world';
+  if (mode !== 'blueprint') {
+    return { success: true, mapProfile: { ...mapProfile, mode: 'world', blueprintAsset: null } };
+  }
+
+  const blueprintAsset = mapProfile.blueprintAsset && typeof mapProfile.blueprintAsset === 'object'
+    ? { ...mapProfile.blueprintAsset }
+    : null;
+
+  if (!blueprintAsset) {
+    return { success: true, mapProfile: { mode: 'blueprint', worldScope: null, blueprintAsset: null } };
+  }
+
+  if (blueprintAsset.path) {
+    return { success: true, mapProfile: { ...mapProfile, mode: 'blueprint', blueprintAsset } };
+  }
+
+  if (!blueprintAsset.inlineBase64) {
+    return { success: false, message: 'Blueprint asset is missing file data.' };
+  }
+
+  const upload = await saveCompanyMapAsset(company, {
+    name: blueprintAsset.fileName || blueprintAsset.name || 'map-asset',
+    mimeType: blueprintAsset.mimeType || 'application/octet-stream',
+    data: blueprintAsset.inlineBase64,
+  });
+  if (!upload || upload.success === false || !upload.blueprintAsset?.path) {
+    return { success: false, message: upload?.message || 'Failed to store blueprint asset.' };
+  }
+
+  return {
+    success: true,
+    mapProfile: {
+      mode: 'blueprint',
+      worldScope: null,
+      blueprintAsset: upload.blueprintAsset,
+    }
+  };
+}
+
+function resolveCompanyMapAssetPath(relativePath) {
+  const rel = String(relativePath || '').trim();
+  if (!rel) return null;
+  const normalizedRel = path.normalize(rel);
+  const absolute = path.resolve(DATA_DIR, normalizedRel);
+  const root = path.resolve(DATA_DIR);
+  if (!absolute.startsWith(root)) return null;
+  if (!fs.existsSync(absolute)) return null;
+  return absolute;
+}
+
+function getCompanyAnnotationFilePath(company) {
+  const cleanCompany = safeSegment(normStr(company));
+  if (!cleanCompany) return null;
+  const companyDir = path.join(COMPANIES_DIR, cleanCompany);
+  const assetsDir = path.join(companyDir, 'map-assets');
+  ensureDir(companyDir);
+  ensureDir(assetsDir);
+  return path.join(assetsDir, 'blueprint-annotations.json');
+}
+
+async function getCompanyBlueprintPolygons(company) {
+  try {
+    const filePath = getCompanyAnnotationFilePath(company);
+    if (!filePath) return { success: false, message: 'Company is required.' };
+    if (!fs.existsSync(filePath)) return { success: true, points: [], polygons: [] };
+    const raw = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    const points = Array.isArray(raw?.points) ? raw.points : [];
+    const polygons = Array.isArray(raw?.polygons) ? raw.polygons : [];
+    return { success: true, points, polygons };
+  } catch (e) {
+    return { success: false, message: e.message || String(e) };
+  }
+}
+
+async function saveCompanyBlueprintPolygons(company, polygons = [], points = []) {
+  try {
+    const filePath = getCompanyAnnotationFilePath(company);
+    if (!filePath) return { success: false, message: 'Company is required.' };
+    const cleanedPoints = (Array.isArray(points) ? points : []).map((pt, idx) => {
+      const label = normStr(pt?.label || pt?.id || `M${idx + 1}`);
+      return {
+        id: normStr(pt?.id || label || `M${idx + 1}`),
+        label: label || `M${idx + 1}`,
+        x: Math.max(0, Math.min(100, Number(pt?.x))),
+        y: Math.max(0, Math.min(100, Number(pt?.y))),
+        updatedAt: new Date().toISOString(),
+      };
+    }).filter(pt => Number.isFinite(pt.x) && Number.isFinite(pt.y));
+
+    const cleaned = (Array.isArray(polygons) ? polygons : []).map((poly, idx) => {
+      const id = normStr(poly?.id || poly?.label || `P${idx + 1}`);
+      const label = normStr(poly?.label || id);
+      const points = (Array.isArray(poly?.points) ? poly.points : [])
+        .map(pt => ({
+          x: Number(pt?.x),
+          y: Number(pt?.y),
+        }))
+        .filter(pt => Number.isFinite(pt.x) && Number.isFinite(pt.y))
+        .map(pt => ({
+          x: Math.max(0, Math.min(100, pt.x)),
+          y: Math.max(0, Math.min(100, pt.y)),
+        }));
+      return {
+        id: id || `P${idx + 1}`,
+        label: label || id || `P${idx + 1}`,
+        points,
+        updatedAt: new Date().toISOString(),
+      };
+    }).filter(poly => Array.isArray(poly.points) && poly.points.length >= 3);
+
+    const payload = {
+      company: normStr(company),
+      points: cleanedPoints,
+      polygons: cleaned,
+      savedAt: new Date().toISOString(),
+    };
+    fs.writeFileSync(filePath, JSON.stringify(payload, null, 2), 'utf8');
+    return { success: true, points: cleanedPoints, polygons: cleaned };
+  } catch (e) {
+    return { success: false, message: e.message || String(e) };
+  }
 }
 
 // ─── Links / Photos Base Resolver ─────────────────────────────────────────
@@ -621,6 +792,10 @@ module.exports = {
   // NEW: repair colors
   getRepairColorMaps,
   setRepairColorForCompanyLocation,
+  saveCompanyMapAsset,
+  resolveCompanyMapAssetPath,
+  getCompanyBlueprintPolygons,
+  saveCompanyBlueprintPolygons,
   // NEW: status/repair settings
   getStatusAndRepairSettings,
   setStatusColor,

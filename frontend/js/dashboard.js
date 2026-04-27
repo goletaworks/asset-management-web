@@ -302,6 +302,11 @@
   }
 
   function applyAnalyticsFilters() {
+    if (typeof window.stationMatchesHierarchyScope === 'function') {
+      state.filteredStations = (state.allStations || []).filter(s => window.stationMatchesHierarchyScope(s));
+      return;
+    }
+
     const { locations, assetsByLocation } = readActiveFilters();
 
     if (!locations || locations.size === 0) {

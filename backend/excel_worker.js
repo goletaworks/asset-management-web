@@ -38,6 +38,16 @@ const ensureDir = (p) => { if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: t
 const normStr = (v) => String(v ?? '').trim();
 const lc = (v) => normStr(v).toLowerCase();
 const toBool = (v) => ['true','1','yes','y','t'].includes(lc(v));
+const sanitizeMapProfile = (mapProfile) => {
+  if (!mapProfile || typeof mapProfile !== 'object') {
+    return { mode: 'world', worldScope: null, blueprintAsset: null };
+  }
+  return {
+    mode: mapProfile.mode === 'blueprint' ? 'blueprint' : 'world',
+    worldScope: mapProfile.worldScope && typeof mapProfile.worldScope === 'object' ? { ...mapProfile.worldScope } : null,
+    blueprintAsset: mapProfile.blueprintAsset && typeof mapProfile.blueprintAsset === 'object' ? { ...mapProfile.blueprintAsset } : null,
+  };
+};
 const uniqSorted = (arr) => Array.from(new Set(arr.map(normStr).filter(Boolean)))
   .sort((a,b) => a.toLowerCase().localeCompare(b.toLowerCase()));
 const getSheet = (wb, name) => wb.getWorksheet(name) || wb.worksheets.find(ws => lc(ws.name) === lc(name));
@@ -469,11 +479,17 @@ async function readLookupsSnapshot() {
       const name = normStr(row.getCell(1)?.text);
       const active = toBool(row.getCell(2)?.text);
       if (name && active) {
-        companies.push({
-          name: name,
-          description: normStr(row.getCell(3)?.text),
-          email: normStr(row.getCell(4)?.text),
-        });
+        let parsedMapProfile = null;
+        const mapProfileRaw = normStr(row.getCell(5)?.text);
+        if (mapProfileRaw) {
+          try { parsedMapProfile = JSON.parse(mapProfileRaw); } catch (_) {}
+        }
+        companies.push({
+          name: name,
+          description: normStr(row.getCell(3)?.text),
+          email: normStr(row.getCell(4)?.text),
+          mapProfile: sanitizeMapProfile(parsedMapProfile),
+        });
       }
     });
   }
@@ -1248,13 +1264,14 @@ async function setAssetTypeColorForLocation(assetType, location, color) {
   return await setAssetTypeColorForCompanyLocation(assetType, companyForLoc, location, color);
 }
 
-async function upsertCompany(name, active = true, description = '', email = '') {
+async function upsertCompany(name, active = true, description = '', email = '', mapProfile = null) {
   await ensureLookupsReady();
   const _ExcelJS = getExcel();
   const wb = new _ExcelJS.Workbook();
   await wb.xlsx.readFile(LOOKUPS_PATH);
   const ws = getSheet(wb, 'Companies');
   const tgt = lc(name);
+  const mapProfileJson = JSON.stringify(sanitizeMapProfile(mapProfile));
   let found = false;
   ws.eachRow({ includeEmpty:false }, (row, idx) => {
     if (idx === 1) return;
@@ -1262,10 +1279,11 @@ async function upsertCompany(name, active = true, description = '', email = '') 
       row.getCell(2).value = active ? 'TRUE' : '';
       row.getCell(3).value = normStr(description);
       row.getCell(4).value = normStr(email);
+      row.getCell(5).value = mapProfileJson;
       found = true;
     }
   });
-  if (!found) ws.addRow([normStr(name), active ? 'TRUE' : '', normStr(description), normStr(email)]);
+  if (!found) ws.addRow([normStr(name), active ? 'TRUE' : '', normStr(description), normStr(email), mapProfileJson]);
   await wb.xlsx.writeFile(LOOKUPS_PATH);
   return { success: true };
 }

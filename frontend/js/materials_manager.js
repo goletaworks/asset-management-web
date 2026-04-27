@@ -14,6 +14,9 @@
   }
 
   const norm = (v) => String(v || '').trim().toLowerCase();
+  const getScope = () => (typeof window.getHierarchySelectionContext === 'function'
+    ? window.getHierarchySelectionContext()
+    : null);
 
   function findLocationName(company, locationId) {
     const locs = state.data[company]?.locations || [];
@@ -23,9 +26,39 @@
   }
 
   function applyFilters(company, materials, selectedLocationIds) {
-    if (!selectedLocationIds || !selectedLocationIds.size) return [];
-    const selected = new Set(Array.from(selectedLocationIds).map(norm));
-    return (materials || []).filter(m => selected.has(norm(m.location_id)));
+    const selected = new Set(Array.from(selectedLocationIds || []).map(norm));
+    const scope = getScope();
+    const scopedAssetsByLoc = scope?.assetsByLocation || new Map();
+    return (materials || []).filter(m => {
+      const locOk = selected.size === 0 || selected.has(norm(m.location_id));
+      if (!locOk) return false;
+      if (!scope || !scopedAssetsByLoc.size) return true;
+      const locNorm = norm(findLocationName(company, m.location_id) || m.location_id);
+      const assetSet = scopedAssetsByLoc.get(locNorm);
+      if (!assetSet || assetSet.size === 0) return true;
+      const matAsset = norm(m.asset_type || m.assetType || '');
+      return matAsset ? assetSet.has(matAsset) : true;
+    });
+  }
+
+  function applyHierarchyScopeToCompanyData(company) {
+    const scope = getScope();
+    if (!scope || !scope.hasCompany) return;
+    if (norm(scope.company) !== norm(company)) return;
+    const dataset = state.data[company];
+    if (!dataset) return;
+    const locs = dataset.locations || [];
+    if (!Array.isArray(locs) || !locs.length) return;
+    const selected = new Set();
+    if (scope.locationsNorm && scope.locationsNorm.size) {
+      locs.forEach(loc => {
+        const locNameNorm = norm(loc.name || loc.id);
+        if (scope.locationsNorm.has(locNameNorm)) selected.add(String(loc.id));
+      });
+    } else {
+      locs.forEach(loc => selected.add(String(loc.id)));
+    }
+    dataset.selectedLocations = selected;
   }
 
   function showModal(title, bodyBuilder) {
@@ -53,10 +86,13 @@
 
   async function loadCompanies() {
     try {
+      const scope = getScope();
       const companies = await window.electronAPI.getActiveCompanies();
-      state.companies = companies || [];
+      state.companies = scope?.company ? [scope.company] : (companies || []);
       if (!state.companies.length) {
         state.activeCompany = null;
+      } else if (scope?.company) {
+        state.activeCompany = scope.company;
       } else if (!state.activeCompany || !state.companies.some(c => (c.name || c) === state.activeCompany)) {
         state.activeCompany = state.companies[0].name || state.companies[0];
       }
@@ -79,6 +115,7 @@
         filters: [], // not used in new filter UX
         selectedLocations: new Set((res?.locations || []).map(l => String(l.id))),
       };
+      applyHierarchyScopeToCompanyData(company);
     } catch (e) {
       console.error('[materials] load company failed', e);
       state.data[company] = { locations: [], materials: [], filters: [] };
@@ -151,6 +188,7 @@
     const chips = qs(wrap, '.filter-chips');
     chips.style.flexWrap = 'wrap';
 
+    applyHierarchyScopeToCompanyData(company);
     const selected = state.data[company].selectedLocations || new Set(locs.map(l => String(l.id)));
     state.data[company].selectedLocations = selected;
 
@@ -426,6 +464,11 @@
 
   async function initMaterialsManagerView() {
     await loadCompanies();
+    window.removeEventListener('hierarchy-scope:changed', window.__materialsScopeListener);
+    window.__materialsScopeListener = async () => {
+      await loadCompanies();
+    };
+    window.addEventListener('hierarchy-scope:changed', window.__materialsScopeListener);
   }
 
   window.initMaterialsManagerView = window.initMaterialsManagerView || initMaterialsManagerView;

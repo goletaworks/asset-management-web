@@ -73,8 +73,8 @@
     getLocationsForCompany: (company) => api('GET', '/api/lookups/locations' + qs({ company })),
     getAssetTypesForLocation: (company, location) =>
       api('GET', '/api/lookups/asset-types' + qs({ company, location })),
-    upsertCompany: (name, active, description, email) =>
-      api('POST', '/api/lookups/company', { name, active: !!active, description, email }),
+    upsertCompany: (name, active, description, email, mapProfile = null) =>
+      api('POST', '/api/lookups/company', { name, active: !!active, description, email, mapProfile }),
     upsertLocation: (location, company) =>
       api('POST', '/api/lookups/location', { location, company }),
     upsertAssetType: (assetType, company, location) =>
@@ -83,6 +83,46 @@
       api('PUT', '/api/lookups/location-link', { company, location, link }),
     setAssetTypeLink: (assetType, company, location, link) =>
       api('PUT', '/api/lookups/asset-type-link', { assetType, company, location, link }),
+    uploadCompanyMapAsset: async (company, file) => {
+      const fd = new FormData();
+      fd.append('company', company);
+      fd.append('file', file, file?.name || 'map-asset');
+
+      // Fail fast so blueprint mode can fall back to inline save.
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      try {
+        const res = await fetch('/api/lookups/company-map-asset-upload', {
+          method: 'POST',
+          credentials: 'include',
+          body: fd,
+          signal: controller.signal,
+        });
+        let payload = null;
+        try {
+          payload = await res.json();
+        } catch (_) {
+          payload = null;
+        }
+        if (!res.ok) {
+          return { success: false, message: payload?.message || `Upload failed (${res.status}).` };
+        }
+        return payload || { success: false, message: 'Upload response was empty.' };
+      } catch (e) {
+        if (e && e.name === 'AbortError') {
+          return { success: false, message: 'Upload timed out.' };
+        }
+        return { success: false, message: e?.message || 'Upload failed.' };
+      } finally {
+        clearTimeout(timeout);
+      }
+    },
+    getCompanyMapAssetUrl: (assetPath) =>
+      '/api/lookups/company-map-asset' + qs({ path: assetPath }),
+    getCompanyBlueprintPolygons: (company) =>
+      api('GET', '/api/lookups/company-blueprint-polygons' + qs({ company })),
+    saveCompanyBlueprintPolygons: (company, polygons, points = []) =>
+      api('POST', '/api/lookups/company-blueprint-polygons', { company, polygons, points }),
 
     // ─── Colors ────────────────────────────────────────────────────────────
     getColorMaps: () => api('GET', '/api/colors/maps'),
