@@ -478,15 +478,20 @@ async function renderRecentPhotos(container, stn) {
       row.innerHTML = '<div class="photo-empty">No photos found</div>';
     } else {
       for (const p of photos) {
+        const result = await window.electronAPI.getPhotoUrl(
+          stn.name, stn.station_id, p.photoPath || p.name
+        );
+        const imgUrl = (result && result.url) || p.url;
+
         const a = document.createElement('a');
-        a.href = p.url;
+        a.href = imgUrl;
         a.className = 'photo-link';
-        a.dataset.url = p.url;
+        a.dataset.url = imgUrl;
         a.title = p.name || `${stn.name} photo`;
         const img = document.createElement('img');
         img.className = 'photo-thumb';
         img.alt = `${stn.name} photo`;
-        img.src = p.url;
+        img.src = imgUrl;
         a.appendChild(img);
         row.appendChild(a);
       }

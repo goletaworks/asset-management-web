@@ -188,15 +188,18 @@ async function createPhotoFolder(siteName, stationId, folderPath) {
 async function savePhotos(siteName, stationId, folderPath, files) {
   try {
     const app = require('./app');
+
     const { stationDir } = await app.resolvePhotosBaseAndStationDir(siteName, stationId);
-    
     if (!stationDir) {
       return { success: false, message: 'Station photo directory not found' };
     }
 
-    const targetPath = folderPath 
-      ? safePathJoin(stationDir, folderPath)
-      : stationDir;
+    let targetPath;
+    if (folderPath === '__default__' || !folderPath) {
+      targetPath = stationDir;
+    } else {
+      targetPath = safePathJoin(stationDir, folderPath);
+    }
 
     // Ensure target directory exists
     await fsp.mkdir(targetPath, { recursive: true });

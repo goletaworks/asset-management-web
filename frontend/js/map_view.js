@@ -569,38 +569,39 @@ async function loadRecentPhotoForRHS(stn) {
   if (!photoContainer) return;
 
   try {
-    // Use the same photo loading logic as station detail page
     const photos = await window.electronAPI.getRecentPhotos(stn.name, stn.station_id, 1);
-    
+
     if (!photos || photos.length === 0) {
       photoContainer.innerHTML = '<div class="rhs-photo-empty">No photos available</div>';
       return;
     }
 
-    const photo = photos[0]; // Get the most recent photo
+    const photo = photos[0];
+    const result = await window.electronAPI.getPhotoUrl(
+      stn.name, stn.station_id, photo.photoPath || photo.name
+    );
+    const imgUrl = (result && result.url) || photo.url;
+
     photoContainer.innerHTML = `
       <div class="rhs-photo-wrapper">
         <img class="rhs-photo-thumb"
-             src="${photo.url}"
+             src="${imgUrl}"
              alt="${escapeHtml(photo.name || `${stn.name} photo`)}" />
       </div>`;
 
-    // Add click handler to open lightbox (reuse station detail lightbox if available)
     const img = photoContainer.querySelector('.rhs-photo-thumb');
     if (img) {
       img.addEventListener('click', () => {
-        // Try to use the station detail lightbox if it exists
         const lightbox = document.getElementById('photoLightbox');
         const lightboxImg = document.getElementById('lightboxImg');
-        
+
         if (lightbox && lightboxImg) {
-          lightboxImg.src = photo.url;
+          lightboxImg.src = imgUrl;
           lightbox.classList.add('open');
           document.documentElement.classList.add('modal-open');
           document.body.classList.add('modal-open');
         } else {
-          // Fallback: open in new window
-          window.open(photo.url, '_blank');
+          window.open(imgUrl, '_blank');
         }
       });
     }

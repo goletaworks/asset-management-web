@@ -8,8 +8,13 @@ const config = require('./config'); // <— changed
 const lookupsRepo = require('./lookups_repo');
 const materialsManager = require('./materials_manager');
 const { getPersistence } = require('./persistence');
+const { ensureDir } = require('./utils/fs_utils');
 
 const IMAGE_EXTS = config.IMAGE_EXTS;
+
+const DATA_DIR      = process.env.KASMGT_DATA_DIR || path.join(__dirname, '..', 'data');
+const COMPANIES_DIR = path.join(DATA_DIR, 'companies');
+const normStr       = (v) => String(v ?? '').trim();
 
 
 // Normalize location consistently and strip ".xlsx"
@@ -401,7 +406,21 @@ async function addStationsFromSelection(payload) {
     await persistence.writeLocationRows(company, location, targetSheetName, secs, hdrs, rowsStamped);
 
     console.log(`[importSelection] Successfully imported ${rowsStamped.length} rows to ${targetSheetName}`);
-    
+
+    // Create per-station folders in the media hierarchy
+    try {
+      const mediaBase = getDefaultMediaPath(company, location, at);
+      if (mediaBase) {
+        for (const r of rowsStamped) {
+          const sid = String(r['Station ID'] || r['station_id'] || '').trim();
+          const sname = String(r['Site Name'] || r['name'] || '').trim();
+          if (sid) ensureDir(path.join(mediaBase, folderNameFor(sname, sid)));
+        }
+      }
+    } catch (e) {
+      console.warn('[importSelection] media folder creation failed:', e.message);
+    }
+
   } catch (e) {
     console.error('[importSelection] writeLocationRows failed:', e);
     return { success:false, message:'Failed writing to location workbook.' };
@@ -526,6 +545,15 @@ async function manualAddInstance(payload = {}) {
     const sheetName = `${assetType} ${location}`;
     const persistence = await getPersistence();
     await persistence.writeLocationRows(company, location, sheetName, sections, headers, [row]);
+
+    // Create per-station folder in the media hierarchy
+    try {
+      const mediaBase = getDefaultMediaPath(company, location, assetType);
+      if (mediaBase) ensureDir(path.join(mediaBase, folderNameFor(name, sid)));
+    } catch (e) {
+      console.warn('[manualAddInstance] media folder creation failed:', e.message);
+    }
+
     return { success:true, added:1, sheet: sheetName };
   } catch (e) {
     console.error('[manualAddInstance] failed:', e);
@@ -593,10 +621,11 @@ function safePathJoin(basePath, ...segments) {
  */
 async function resolvePhotosBaseAndStationDir(siteName, stationId) {
   try {
-    // Derive {assetType, location} from station rows
+    // Derive {assetType, location, resolvedSiteName} from station rows
     let assetType = '';
     let location  = '';
     let company   = '';
+    let resolvedSiteName = siteName;
     
     try {
       // ══════════════════════════════════════════════════════════════════
@@ -613,6 +642,7 @@ async function resolvePhotosBaseAndStationDir(siteName, stationId) {
         assetType = String(st.asset_type || '').trim();
         const rawLocation = st.location_file || st.location || st.province;
         location = normLoc(rawLocation);
+        if (st.name) resolvedSiteName = st.name;
       }
     } catch (e) {
       console.error('[resolvePhotosBaseAndStationDir] Error getting station data:', e);
@@ -643,7 +673,7 @@ async function resolvePhotosBaseAndStationDir(siteName, stationId) {
       return { PHOTOS_BASE: null, stationDir: null, canonicalDir: null };
     }
 
-    const targetFolder = folderNameFor(siteName, stationId);
+    const targetFolder = folderNameFor(resolvedSiteName, stationId);
     
     // IMPORTANT: Keep UNC paths as-is with backslashes
     // Node.js on Windows handles UNC paths correctly when they maintain the \\\\ format
@@ -700,6 +730,25 @@ async function resolvePhotosBaseAndStationDir(siteName, stationId) {
       console.error(`[DEBUG] Error reading PHOTOS_BASE directory: ${e.message}`);
     }
 
+    // 3) Fall back to default media path
+    if (company && location && assetType) {
+      const mediaBase = getDefaultMediaPath(company, location, assetType);
+      if (mediaBase) {
+        const mediaStationDir = path.join(mediaBase, targetFolder);
+        try {
+          const mst = await fsp.stat(mediaStationDir);
+          if (mst.isDirectory()) {
+            console.log(`[DEBUG] Found media station directory: ${mediaStationDir}`);
+            return { PHOTOS_BASE: mediaBase, stationDir: mediaStationDir, canonicalDir: mediaStationDir };
+          }
+        } catch (_) {}
+        // Create it so the Photos tab always has a directory to work with
+        ensureDir(mediaStationDir);
+        console.log(`[DEBUG] Created media station directory: ${mediaStationDir}`);
+        return { PHOTOS_BASE: mediaBase, stationDir: mediaStationDir, canonicalDir: mediaStationDir };
+      }
+    }
+
     // Nothing found
     console.log(`[DEBUG] No station directory found for ${stationId}`);
     return { PHOTOS_BASE, stationDir: null, canonicalDir: exactDir };
@@ -750,6 +799,7 @@ async function getRecentPhotos(siteName, stationId, limit = 5) {
       name: f.name,
       mtimeMs: f.mtimeMs,
       path: f.path,
+      photoPath: path.relative(stationDir, f.path).split(path.sep).join('/'),
     }));
   } catch (e) {
     console.error('[getRecentPhotos] failed:', e);
@@ -886,8 +936,42 @@ async function upsertCompanyWithMaterials(name, active, description, email) {
     } catch (e) {
       console.warn('[materials] Failed to ensure materials workbook for company', name, e.message);
     }
+    try {
+      ensureDir(path.join(COMPANIES_DIR, normStr(name), 'media'));
+    } catch (e) {
+      console.warn('[media] Failed to create media folder for company', name, e.message);
+    }
   }
   return res;
+}
+
+async function upsertLocationWithMedia(location, company) {
+  const res = await lookupsRepo.upsertLocation(location, company);
+  if (res && res.success !== false) {
+    try {
+      ensureDir(path.join(COMPANIES_DIR, normStr(company), 'media', normStr(location)));
+    } catch (e) {
+      console.warn('[media] Failed to create media folder for location', location, e.message);
+    }
+  }
+  return res;
+}
+
+async function upsertAssetTypeWithMedia(assetType, company, location) {
+  const res = await lookupsRepo.upsertAssetType(assetType, company, location);
+  if (res && res.success !== false) {
+    try {
+      ensureDir(path.join(COMPANIES_DIR, normStr(company), 'media', normStr(location), normStr(assetType)));
+    } catch (e) {
+      console.warn('[media] Failed to create media folder for asset type', assetType, e.message);
+    }
+  }
+  return res;
+}
+
+function getDefaultMediaPath(company, location, assetType) {
+  if (!company || !location || !assetType) return null;
+  return path.join(COMPANIES_DIR, normStr(company), 'media', normStr(location), normStr(assetType));
 }
 
 async function getMaterialsForCompany(company) {
@@ -923,8 +1007,9 @@ module.exports = {
   addStationsFromSelection,
   manualAddInstance,
   upsertCompany: upsertCompanyWithMaterials,
-  upsertLocation: lookupsRepo.upsertLocation,
-  upsertAssetType: lookupsRepo.upsertAssetType,
+  upsertLocation: upsertLocationWithMedia,
+  upsertAssetType: upsertAssetTypeWithMedia,
+  getDefaultMediaPath,
   getLookupTree: lookupsRepo.getLookupTree,
   // colors (lookups-backed)
   setAssetTypeColorForLocation,

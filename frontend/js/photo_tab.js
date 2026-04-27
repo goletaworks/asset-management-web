@@ -491,7 +491,7 @@
       if (fileInput) fileInput.value = '';
       if (preview) preview.innerHTML = '';
       if (uploadBtn) uploadBtn.disabled = true;
-      if (folderSelect) folderSelect.value = currentPath;
+      if (folderSelect) folderSelect.value = '__default__';
 
       modal.style.display = 'flex';
     }
@@ -748,7 +748,7 @@
     // Update add photo modal folder select
     const photoFolderSelect = container.querySelector('#photoFolderSelect');
     if (photoFolderSelect) {
-      photoFolderSelect.innerHTML = '<option value="">Root folder</option>';
+      photoFolderSelect.innerHTML = '<option value="__default__">Default</option><option value="">Root folder</option>';
       folders.forEach(folder => {
         const option = document.createElement('option');
         option.value = folder.path;

@@ -70,6 +70,24 @@ async function photoRoutes(fastify) {
     return photoTab.savePhotos(fields.siteName, fields.stationId, fields.folderPath, files);
   });
 
+  fastify.get('/default-path', async (request) => {
+    const { siteName, stationId } = request.query;
+    try {
+      const all = await backend.getStationData({ skipColors: true, debounce: false });
+      const st = all.find(s =>
+        String(s.station_id).trim().toLowerCase() === String(stationId).trim().toLowerCase()
+      );
+      if (!st) return { success: false, path: null };
+      const company   = st.company || '';
+      const location  = (st.location_file || st.location || st.province || '').trim();
+      const assetType = (st.asset_type || '').trim();
+      const mediaPath = backend.getDefaultMediaPath(company, location, assetType);
+      return { success: !!mediaPath, path: mediaPath };
+    } catch (e) {
+      return { success: false, path: null, message: String(e) };
+    }
+  });
+
   fastify.post('/folder', {
     preHandler: [fastify.withPermission(PL.READ_EDIT, 'Add photo folders')],
   }, async (request) => {
