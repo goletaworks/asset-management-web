@@ -191,12 +191,33 @@ async function logoutUser() {
   }
 }
 
+// Allow-list of user fields safe to return through the API. Password hashes
+// and any other field whose name contains "password" or "hash" are
+// intentionally dropped so the JSON response cannot leak credentials, even if
+// a future persistence layer adds new columns.
+const SAFE_USER_FIELDS = ['name', 'email', 'permissions', 'admin', 'status', 'created', 'lastLogin'];
+
+function sanitizeUserForApi(user) {
+  if (!user || typeof user !== 'object') return user;
+  const out = {};
+  for (const key of SAFE_USER_FIELDS) {
+    if (user[key] !== undefined) out[key] = user[key];
+  }
+  // Defense-in-depth: never echo any unexpected field whose name looks like a
+  // credential (password / passwordHash / pass / hash / etc.).
+  for (const key of Object.keys(out)) {
+    if (/password|hash/i.test(key)) delete out[key];
+  }
+  return out;
+}
+
 // Get all users
 async function getAllUsers() {
   try {
     const persistence = await getPersistence();
     const result = await persistence.getAllAuthUsers();
-    return result.users || [];
+    const users = result.users || [];
+    return users.map(sanitizeUserForApi);
   } catch (error) {
     console.error('[auth] Error getting users:', error);
     return [];
