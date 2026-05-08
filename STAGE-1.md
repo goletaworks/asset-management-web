@@ -193,7 +193,7 @@ These were called out by the audits but are deferred — they need a design
 decision, are higher-effort than the prompt allowed, or both.
 
 - Replace the in-process session singletons (`currentUser`, `sessionToken` in `backend/auth.js`) with a real session store. Right now the JWT carries identity correctly per request, but those module-level globals still exist and are not multi-tenant safe.
-- Add `loginAuthUser` (and the rest of the auth surface) to `DualWritePersistence` — the wrapper currently has no auth methods, so a configuration with multiple write targets only works for auth if one of the writers happens to also be the read source. (Today's repo configuration `read: excel, write: [excel, mongodb]` works because the read happens against Excel; mongo never sees auth writes.)
+- Tests for `DualWritePersistence`'s auth surface. The wrapper now delegates auth reads to the read persistence and fans writes out to every writer (this had to be added during phase 1 to keep `npm start` working after the `authEnabled` removal), but the test suite still exercises only single-persistence configurations. A multi-writer integration test that exercises Mongo would catch any future skew between the writers.
 - Tighten CORS. `@fastify/cors` is registered with `origin: true, credentials: true`, which reflects whatever origin asks. This is pre-existing and out of scope for this phase.
 - Frontend hardening (CSP, SameSite=strict cookies, frame-ancestors, etc.).
 - Rate-limiting login attempts.
