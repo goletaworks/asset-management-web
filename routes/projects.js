@@ -5,12 +5,26 @@ const lookups = require('../backend/lookups_repo');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { assertSafePathSegment } = require('../backend/utils/path_safety');
+
+function validateProjectPath(reply, { siteName, stationId, folderName }) {
+  try {
+    if (siteName !== undefined) assertSafePathSegment(siteName, 'siteName');
+    if (stationId !== undefined) assertSafePathSegment(stationId, 'stationId');
+    if (folderName !== undefined) assertSafePathSegment(folderName, 'folderName');
+    return true;
+  } catch (err) {
+    reply.code(err.statusCode || 400).send({ success: false, message: err.message });
+    return false;
+  }
+}
 
 async function projectRoutes(fastify) {
   const PL = fastify.PERMISSION_LEVELS;
 
-  fastify.get('/', async (request) => {
+  fastify.get('/', async (request, reply) => {
     const { siteName, stationId, keywords } = request.query;
+    if (!validateProjectPath(reply, { siteName, stationId })) return;
     const opts = {};
     if (keywords) {
       opts.keywords = typeof keywords === 'string' ? keywords.split(',') : keywords;
@@ -29,14 +43,15 @@ async function projectRoutes(fastify) {
 
   fastify.delete('/:siteName/:stationId/:folderName', {
     preHandler: [fastify.withPermission(PL.READ_EDIT, 'Delete projects')],
-  }, async (request) => {
+  }, async (request, reply) => {
     const { siteName, stationId, folderName } = request.params;
+    if (!validateProjectPath(reply, { siteName, stationId, folderName })) return;
     return projectHistory.deleteProjectFolder(siteName, stationId, folderName);
   });
 
   fastify.post('/', {
     preHandler: [fastify.withPermission(PL.READ_EDIT, 'Create projects')],
-  }, async (request) => {
+  }, async (request, reply) => {
     const parts = request.parts();
     const fields = {};
     const photoFiles = [];
@@ -58,6 +73,11 @@ async function projectRoutes(fastify) {
         fields[part.fieldname] = part.value;
       }
     }
+
+    if (!validateProjectPath(reply, {
+      siteName: fields.siteName,
+      stationId: fields.stationId
+    })) return;
 
     const payload = {
       ...JSON.parse(fields.payload || '{}'),

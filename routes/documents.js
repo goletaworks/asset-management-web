@@ -3,18 +3,35 @@
 const documentsTab = require('../backend/documents_tab');
 const fs = require('fs');
 const path = require('path');
+const { assertSafePathSegment, assertSafeRelativePath } = require('../backend/utils/path_safety');
+
+function validateDocPathInputs(reply, { siteName, stationId, docPath, folderPath, subPath }) {
+  try {
+    if (siteName !== undefined) assertSafePathSegment(siteName, 'siteName');
+    if (stationId !== undefined) assertSafePathSegment(stationId, 'stationId');
+    if (docPath !== undefined) assertSafeRelativePath(docPath, 'docPath');
+    if (folderPath !== undefined) assertSafeRelativePath(folderPath, 'folderPath');
+    if (subPath !== undefined && subPath !== '') assertSafeRelativePath(subPath, 'subPath');
+    return true;
+  } catch (err) {
+    reply.code(err.statusCode || 400).send({ success: false, message: err.message });
+    return false;
+  }
+}
 
 async function documentRoutes(fastify) {
   const PL = fastify.PERMISSION_LEVELS;
 
-  fastify.get('/structure', async (request) => {
+  fastify.get('/structure', async (request, reply) => {
     const { siteName, stationId, subPath } = request.query;
+    if (!validateDocPathInputs(reply, { siteName, stationId, subPath })) return;
     return documentsTab.getStationDocumentStructure(siteName, stationId, subPath);
   });
 
   // Download / stream a document file
   fastify.get('/file', async (request, reply) => {
     const { siteName, stationId, docPath } = request.query;
+    if (!validateDocPathInputs(reply, { siteName, stationId, docPath })) return;
     try {
       const result = await documentsTab.getDocumentPath(siteName, stationId, docPath);
       if (!result || !result.success || !result.path) {
@@ -44,7 +61,7 @@ async function documentRoutes(fastify) {
 
   fastify.post('/upload', {
     preHandler: [fastify.withPermission(PL.READ_EDIT, 'Save documents')],
-  }, async (request) => {
+  }, async (request, reply) => {
     const parts = request.parts();
     const fields = {};
     const files = [];
@@ -58,27 +75,36 @@ async function documentRoutes(fastify) {
       }
     }
 
+    if (!validateDocPathInputs(reply, {
+      siteName: fields.siteName,
+      stationId: fields.stationId,
+      folderPath: fields.folderPath
+    })) return;
+
     return documentsTab.saveDocuments(fields.siteName, fields.stationId, fields.folderPath, files);
   });
 
   fastify.post('/folder', {
     preHandler: [fastify.withPermission(PL.READ_EDIT, 'Add document folders')],
-  }, async (request) => {
-    const { siteName, stationId, folderPath } = request.body;
+  }, async (request, reply) => {
+    const { siteName, stationId, folderPath } = request.body || {};
+    if (!validateDocPathInputs(reply, { siteName, stationId, folderPath })) return;
     return documentsTab.createDocumentFolder(siteName, stationId, folderPath);
   });
 
   fastify.delete('/file', {
     preHandler: [fastify.withPermission(PL.READ_EDIT, 'Delete documents')],
-  }, async (request) => {
-    const { siteName, stationId, docPath } = request.body;
+  }, async (request, reply) => {
+    const { siteName, stationId, docPath } = request.body || {};
+    if (!validateDocPathInputs(reply, { siteName, stationId, docPath })) return;
     return documentsTab.deleteDocument(siteName, stationId, docPath);
   });
 
   fastify.delete('/folder', {
     preHandler: [fastify.withPermission(PL.READ_EDIT, 'Delete document folders')],
-  }, async (request) => {
-    const { siteName, stationId, folderPath } = request.body;
+  }, async (request, reply) => {
+    const { siteName, stationId, folderPath } = request.body || {};
+    if (!validateDocPathInputs(reply, { siteName, stationId, folderPath })) return;
     return documentsTab.deleteDocumentFolder(siteName, stationId, folderPath);
   });
 }
