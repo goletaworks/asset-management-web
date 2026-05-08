@@ -17,8 +17,8 @@ const DEFAULT_PHOTOS_BASE = 'C:\Users\nitsu\OneDrive\Documents\Stations';
 const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tif', '.tiff'];
 const DEFAULT_MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/asmgt';
 
-// Database configuration path
-const DB_CONFIG_PATH = path.join(__dirname, 'db-config.json');
+// Database configuration path (override via KASMGT_DB_CONFIG for tests)
+const DB_CONFIG_PATH = process.env.KASMGT_DB_CONFIG || path.join(__dirname, 'db-config.json');
 
 /**
  * Load database configuration from db-config.json
