@@ -62,16 +62,23 @@ function isSameUser(a, b) {
     || norm(a.email) && norm(a.email) === norm(b.email);
 }
 
-// Create user
+// Create user (public self-registration). Role and admin fields from the
+// body are intentionally ignored — clients cannot self-elect privileges.
+// First-admin bootstrap: if no users exist yet, the very first registrant is
+// promoted to Full Admin so a fresh deployment has someone who can manage it.
 async function createUser(userData) {
   try {
-    const { name, email, password, admin, permissions } = userData;
+    const { name, email, password } = userData || {};
 
     console.log('[auth] Creating user:', name);
 
     if (!validateEmail(email)) {
       return { success: false, message: 'Email must be @ec.gc.ca domain' };
     }
+
+    const isFirstUser = !(await hasUsers());
+    const permissions = isFirstUser ? 'Full Admin' : 'Read Only';
+    const admin = isFirstUser ? 'Yes' : 'No';
 
     const hashedPassword = await hashPassword(password);
     const persistence = await getPersistence();
@@ -80,8 +87,8 @@ async function createUser(userData) {
       name,
       email: email.toLowerCase(),
       password: hashedPassword,
-      admin: admin ? 'Yes' : 'No',
-      permissions: permissions || 'Read',
+      admin,
+      permissions,
       status: 'Inactive',
       created: new Date().toISOString(),
       lastLogin: ''
