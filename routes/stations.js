@@ -10,7 +10,9 @@ async function stationRoutes(fastify) {
     return backend.getStationData(request.query || {});
   });
 
-  fastify.post('/invalidate', async () => {
+  fastify.post('/invalidate', {
+    preHandler: [fastify.withPermission(PL.READ_EDIT, 'Invalidate station cache')],
+  }, async () => {
     return backend.invalidateStationCache();
   });
 

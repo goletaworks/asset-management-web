@@ -51,7 +51,9 @@ async function authRoutes(fastify) {
     return null;
   });
 
-  fastify.get('/users', async () => auth.getAllUsers());
+  fastify.get('/users', {
+    preHandler: [fastify.withPermission(PL.FULL_ADMIN, 'List users')],
+  }, async () => auth.getAllUsers());
 
   fastify.put('/users/:target', async (request, reply) => {
     const { target } = request.params;

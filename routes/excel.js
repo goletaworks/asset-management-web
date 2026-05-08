@@ -14,11 +14,15 @@ async function excelRoutes(fastify) {
   const PL = fastify.PERMISSION_LEVELS;
 
   // Sheet listing from base64 workbook
-  fastify.post('/list-sheets', async (request) => {
+  fastify.post('/list-sheets', {
+    preHandler: [fastify.withPermission(PL.READ_EDIT, 'List Excel sheets')],
+  }, async (request) => {
     return backend.listExcelSheets(request.body.b64);
   });
 
-  fastify.post('/parse-rows-from-sheet', async (request) => {
+  fastify.post('/parse-rows-from-sheet', {
+    preHandler: [fastify.withPermission(PL.READ_EDIT, 'Parse rows from Excel sheet')],
+  }, async (request) => {
     const { b64, sheetName } = request.body;
     return getExcelClient().parseRowsFromSheet(b64, sheetName);
   });
