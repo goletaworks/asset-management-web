@@ -7,7 +7,6 @@ const FEATURE_FLAGS_PATH = path.join(__dirname, 'feature-flags.json');
 
 // Defaults mirror current behaviour; chatbot defaults to env if provided
 const DEFAULT_FLAGS = {
-  authEnabled: false,
   testTabEnabled: true,
   chatbotDisabled: String(process.env.CHATBOT_DISABLED || '').toLowerCase() === 'true'
 };
@@ -20,9 +19,6 @@ function readFlagsFile() {
     const raw = fs.readFileSync(FEATURE_FLAGS_PATH, 'utf8');
     const parsed = JSON.parse(raw);
     return {
-      authEnabled: typeof parsed.authEnabled === 'boolean'
-        ? parsed.authEnabled
-        : DEFAULT_FLAGS.authEnabled,
       testTabEnabled: typeof parsed.testTabEnabled === 'boolean'
         ? parsed.testTabEnabled
         : DEFAULT_FLAGS.testTabEnabled,
