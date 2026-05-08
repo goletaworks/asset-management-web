@@ -2,6 +2,7 @@
 const crypto = require('crypto');
 const { getPersistence } = require('./persistence');
 const accessRequests = require('./access_requests');
+const { hashPassword } = require('./password');
 
 let currentUser = null;
 let sessionToken = null;
@@ -24,11 +25,6 @@ async function initAuthWorkbook() {
     console.error('[auth] Error initializing auth workbook:', error);
     throw error;
   }
-}
-
-// Hash password
-function hashPassword(password) {
-  return crypto.createHash('sha256').update(password).digest('hex');
 }
 
 // Validate email domain
@@ -77,7 +73,7 @@ async function createUser(userData) {
       return { success: false, message: 'Email must be @ec.gc.ca domain' };
     }
 
-    const hashedPassword = hashPassword(password);
+    const hashedPassword = await hashPassword(password);
     const persistence = await getPersistence();
 
     const result = await persistence.createAuthUser({
@@ -115,7 +111,7 @@ async function adminCreateUser(userData, actingUser = null) {
     }
 
     const { admin, permissions } = mapPermissionLevelToRole(permissionLevel);
-    const hashedPassword = hashPassword(password);
+    const hashedPassword = await hashPassword(password);
     const persistence = await getPersistence();
 
     const result = await persistence.createAuthUser({
@@ -136,22 +132,20 @@ async function adminCreateUser(userData, actingUser = null) {
   }
 }
 
-// Login user
+// Login user. Plaintext password is verified inside the persistence layer,
+// which transparently rehashes legacy SHA-256 records to argon2id on success.
 async function loginUser(name, password) {
   try {
     console.log('[auth] Login attempt for:', name);
     const loginId = normalizeLoginInput(name);
 
-    // Check if any users exist via persistence before trying login
     const userCheck = await hasUsers();
     if (!userCheck) {
       return { success: false, message: 'No users exist. Please create an account.' };
     }
 
-    const hashedPassword = hashPassword(password);
     const persistence = await getPersistence();
-
-    const result = await persistence.loginAuthUser(loginId, hashedPassword);
+    const result = await persistence.loginAuthUser(loginId, password);
 
     if (result.success) {
       currentUser = result.user;
@@ -237,7 +231,7 @@ async function sendAccessRequest(requestData) {
       return { success: false, message: 'Email must be @ec.gc.ca domain' };
     }
 
-    const hashedPassword = hashPassword(password);
+    const hashedPassword = await hashPassword(password);
     const result = await accessRequests.createRequest({
       name: name.trim(),
       email: email.trim().toLowerCase(),
@@ -262,23 +256,28 @@ async function createUserWithCode(data) {
       return { success: false, message: 'Name/email, password, and access code are required' };
     }
 
-    const hashedPassword = hashPassword(password);
     const consumeResult = await accessRequests.consumeRequest(nameOrEmail, accessCode);
     if (!consumeResult.success) {
       return consumeResult;
     }
 
     const request = consumeResult.request;
-    if (request.passwordHash !== hashedPassword) {
+    const { verifyPassword } = require('./password');
+    const verification = await verifyPassword(password, request.passwordHash);
+    if (!verification.valid) {
       return { success: false, message: 'Password does not match the original request. Please resend request.' };
     }
+
+    // Always store an argon2id hash for the new account, regardless of how the
+    // request was hashed.
+    const newHash = await hashPassword(password);
 
     const { admin, permissions } = mapPermissionLevelToRole(request.permissionLevel);
     const persistence = await getPersistence();
     const creation = await persistence.createAuthUser({
       name: request.name,
       email: request.email,
-      password: hashedPassword,
+      password: newHash,
       admin,
       permissions,
       status: 'Inactive',
@@ -325,7 +324,7 @@ async function updateUser(targetNameOrEmail, updates = {}, actingUser = null) {
       if (updates.name) updatePayload.name = String(updates.name || '').trim();
       if (updates.email) updatePayload.email = String(updates.email || '').trim().toLowerCase();
       if (updates.password) {
-        updatePayload.passwordHash = hashPassword(updates.password);
+        updatePayload.passwordHash = await hashPassword(updates.password);
       }
     } else {
       // For other users, explicitly block name/email/password changes

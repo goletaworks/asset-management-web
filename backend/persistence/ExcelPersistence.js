@@ -408,9 +408,9 @@ class ExcelPersistence extends IPersistence {
     return await excel.createAuthUser(userData);
   }
 
-  async loginAuthUser(name, hashedPassword) {
+  async loginAuthUser(name, plaintextPassword) {
     const excel = getExcel();
-    return await excel.loginAuthUser(name, hashedPassword);
+    return await excel.loginAuthUser(name, plaintextPassword);
   }
 
   async logoutAuthUser(name) {

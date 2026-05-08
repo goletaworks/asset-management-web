@@ -191,7 +191,7 @@ module.exports = {
   // Auth functions
   createAuthWorkbook: () => call('createAuthWorkbook'),
   createAuthUser: (userData) => call('createAuthUser', userData),
-  loginAuthUser: (name, hashedPassword) => call('loginAuthUser', name, hashedPassword),
+  loginAuthUser: (name, plaintextPassword) => call('loginAuthUser', name, plaintextPassword),
   logoutAuthUser: (name) => call('logoutAuthUser', name),
   getAllAuthUsers: () => call('getAllAuthUsers'),
   hasAuthUsers: () => call('hasAuthUsers'),
