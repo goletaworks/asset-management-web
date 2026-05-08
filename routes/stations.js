@@ -30,7 +30,17 @@ async function stationRoutes(fastify) {
   });
 
   fastify.put('/', async (request, reply) => {
-    const { stationData, schema } = request.body || {};
+    const body = request.body;
+    if (!body || typeof body !== 'object' || Array.isArray(body) ||
+        !body.stationData || typeof body.stationData !== 'object' || Array.isArray(body.stationData)) {
+      return reply.code(400).send({
+        success: false,
+        code: 'bad_request',
+        message: 'stationData is required'
+      });
+    }
+
+    const { stationData, schema } = body;
 
     if (!fastify.hasPermission(request.user, PL.READ_EDIT)) {
       return reply.code(403).send({
