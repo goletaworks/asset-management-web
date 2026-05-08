@@ -2,13 +2,33 @@
 
 require('dotenv').config();
 const path = require('path');
+
+// ── JWT_SECRET validation (must run before any plugins use it) ────────────────
+(function assertJwtSecret() {
+  const secret = process.env.JWT_SECRET;
+  const placeholder = 'change-me-to-a-real-secret';
+  const fix = 'Generate one with:\n  node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"\nthen export JWT_SECRET=<generated value> (or add it to your .env).';
+  if (!secret) {
+    console.error(`[Server] FATAL: JWT_SECRET is not set. ${fix}`);
+    process.exit(1);
+  }
+  if (secret === placeholder) {
+    console.error(`[Server] FATAL: JWT_SECRET is set to the placeholder value. ${fix}`);
+    process.exit(1);
+  }
+  if (secret.length < 32) {
+    console.error(`[Server] FATAL: JWT_SECRET must be at least 32 characters (got ${secret.length}). ${fix}`);
+    process.exit(1);
+  }
+})();
+
 const fastify = require('fastify')({ logger: true });
 
 // ── Core plugins ──────────────────────────────────────────────────────────────
 fastify.register(require('@fastify/cors'), { origin: true, credentials: true });
 fastify.register(require('@fastify/cookie'));
 fastify.register(require('@fastify/jwt'), {
-  secret: process.env.JWT_SECRET || 'change-me-to-a-real-secret',
+  secret: process.env.JWT_SECRET,
   cookie: { cookieName: 'token', signed: false }
 });
 fastify.register(require('@fastify/multipart'), {
