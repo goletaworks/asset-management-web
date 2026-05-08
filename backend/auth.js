@@ -225,12 +225,14 @@ function verifySession(token) {
   return token === sessionToken && currentUser !== null;
 }
 
-// Send access request (email + store pending request)
+// Send access request (email + store pending request). The requester does NOT
+// pick their own permission level — accounts are created Read Only and the
+// approver promotes them later from the Users page.
 async function sendAccessRequest(requestData) {
   try {
-    const { name, email, password, reason, approver, permissionLevel } = requestData || {};
+    const { name, email, password, reason, approver } = requestData || {};
 
-    if (!name || !email || !password || !reason || !approver || !permissionLevel) {
+    if (!name || !email || !password || !reason || !approver) {
       return { success: false, message: 'All fields are required' };
     }
 
@@ -244,8 +246,7 @@ async function sendAccessRequest(requestData) {
       email: email.trim().toLowerCase(),
       passwordHash: hashedPassword,
       reason: reason.trim(),
-      approverName: approver,
-      permissionLevel
+      approverName: approver
     });
 
     return result;
@@ -279,14 +280,13 @@ async function createUserWithCode(data) {
     // request was hashed.
     const newHash = await hashPassword(password);
 
-    const { admin, permissions } = mapPermissionLevelToRole(request.permissionLevel);
     const persistence = await getPersistence();
     const creation = await persistence.createAuthUser({
       name: request.name,
       email: request.email,
       password: newHash,
-      admin,
-      permissions,
+      admin: 'No',
+      permissions: 'Read Only',
       status: 'Inactive',
       created: new Date().toISOString(),
       lastLogin: ''

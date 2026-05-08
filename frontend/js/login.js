@@ -82,7 +82,6 @@
     const password = document.getElementById('regPassword').value;
     const reason = document.getElementById('regReason').value.trim();
     const approver = document.getElementById('regApprover').value;
-    const permissionLevel = document.getElementById('regPermissionLevel').value;
 
     if (!name || !email || !password || !reason) {
       window.appAlert('Please fill in all required fields');
@@ -101,8 +100,7 @@
         email,
         password,
         reason,
-        approver,
-        permissionLevel
+        approver
       });
 
       if (result.success) {

@@ -58,18 +58,8 @@ function findApprover(selectedName) {
   return APPROVERS.find(a => a.name.toLowerCase() === normalized);
 }
 
-const LEGACY_PERMISSION_LEVEL = 'Read and Edit General Info and Delete Functionalities';
-const UPDATED_PERMISSION_LEVEL = 'Read and Edit, including General Info, and Add Infrastructure';
-
-function sanitizePermissionLevel(level) {
-  const normalized = level === LEGACY_PERMISSION_LEVEL ? UPDATED_PERMISSION_LEVEL : level;
-  const allowed = ['Read Only', 'Read and Edit', UPDATED_PERMISSION_LEVEL, 'Full Admin'];
-  if (allowed.includes(normalized)) return normalized;
-  return 'Read Only';
-}
-
-async function createRequest({ name, email, passwordHash, reason, approverName, permissionLevel }) {
-  if (!name || !email || !passwordHash || !reason || !approverName || !permissionLevel) {
+async function createRequest({ name, email, passwordHash, reason, approverName }) {
+  if (!name || !email || !passwordHash || !reason || !approverName) {
     return { success: false, message: 'All fields are required' };
   }
 
@@ -91,7 +81,6 @@ async function createRequest({ name, email, passwordHash, reason, approverName, 
     reason,
     approver: approver.name,
     approverEmail: approver.email,
-    permissionLevel: sanitizePermissionLevel(permissionLevel),
     codeHash,
     status: 'pending',
     createdAt: now
@@ -106,7 +95,6 @@ async function createRequest({ name, email, passwordHash, reason, approverName, 
     requesterName: record.name,
     requesterEmail: record.email,
     reason: record.reason,
-    permissionLevel: record.permissionLevel,
     code,
     approverName: approver.name
   });

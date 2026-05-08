@@ -30,23 +30,24 @@ function buildTransport() {
  * Send the access request email. If SMTP is not configured, it logs the email
  * contents instead so the flow can still be tested for free.
  */
-async function sendAccessRequestEmail({ to, requesterName, requesterEmail, reason, permissionLevel, code, approverName }) {
+async function sendAccessRequestEmail({ to, requesterName, requesterEmail, reason, code, approverName }) {
 
   const transport = buildTransport();
   const from = process.env.SMTP_FROM || 'ASMGT Access <no-reply@asmgt.local>';
 
   const subject = `Access Request: ${requesterName || 'New User'}`;
   const body = [
-    `You have a new access request for Asset Management.`,
+    `${requesterName || 'A user'} requested access to Asset Management.`,
     '',
     `Requester: ${requesterName || 'N/A'}`,
     `Email: ${requesterEmail || 'N/A'}`,
     `Reason: ${reason || 'N/A'}`,
-    `Requested Permission Level: ${permissionLevel || 'N/A'}`,
     '',
     `Access Code: ${code}`,
     '',
-    `Please share this code with the requester to allow them to complete signup.`
+    `Share the access code with the requester so they can finish signup. The`,
+    `account will be created with Read Only access. To grant additional`,
+    `permissions, edit the user from the Users page after they sign in.`
   ].join('\n');
 
   // If no transport configured, log to console for a free fallback.
