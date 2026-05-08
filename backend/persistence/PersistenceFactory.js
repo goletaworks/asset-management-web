@@ -305,6 +305,45 @@ class DualWritePersistence {
   async deleteAssetTypeFromLocation(companyName, locationName, assetTypeName) {
     return await this._writeToAll('deleteAssetTypeFromLocation', companyName, locationName, assetTypeName);
   }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // AUTH — reads delegate to read persistence; writes go to all writers
+  // ════════════════════════════════════════════════════════════════════════════
+
+  async createAuthWorkbook() {
+    return await this._writeToAll('createAuthWorkbook');
+  }
+
+  async createAuthUser(userData) {
+    return await this._writeToAll('createAuthUser', userData);
+  }
+
+  async loginAuthUser(nameOrEmail, plaintextPassword) {
+    // Login is a read + targeted write (status, lastLogin, optional rehash).
+    // Run it through the read persistence so the verifier sees the canonical
+    // record. The read persistence handles the rehash/status writes itself.
+    return await this.readPersistence.loginAuthUser(nameOrEmail, plaintextPassword);
+  }
+
+  async logoutAuthUser(name) {
+    return await this._writeToAll('logoutAuthUser', name);
+  }
+
+  async getAllAuthUsers() {
+    return await this.readPersistence.getAllAuthUsers();
+  }
+
+  async hasAuthUsers() {
+    return await this.readPersistence.hasAuthUsers();
+  }
+
+  async updateAuthUser(nameOrEmail, updates) {
+    return await this._writeToAll('updateAuthUser', nameOrEmail, updates);
+  }
+
+  async deleteAuthUser(nameOrEmail) {
+    return await this._writeToAll('deleteAuthUser', nameOrEmail);
+  }
 }
 
 /**
