@@ -5,12 +5,26 @@ const lookups = require('../backend/lookups_repo');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { assertSafePathSegment } = require('../backend/utils/path_safety');
+
+function validateInspectionPath(reply, { siteName, stationId, folderName }) {
+  try {
+    if (siteName !== undefined) assertSafePathSegment(siteName, 'siteName');
+    if (stationId !== undefined) assertSafePathSegment(stationId, 'stationId');
+    if (folderName !== undefined) assertSafePathSegment(folderName, 'folderName');
+    return true;
+  } catch (err) {
+    reply.code(err.statusCode || 400).send({ success: false, message: err.message });
+    return false;
+  }
+}
 
 async function inspectionRoutes(fastify) {
   const PL = fastify.PERMISSION_LEVELS;
 
-  fastify.get('/', async (request) => {
+  fastify.get('/', async (request, reply) => {
     const { siteName, stationId, keywords } = request.query;
+    if (!validateInspectionPath(reply, { siteName, stationId })) return;
     const opts = {};
     if (keywords) {
       opts.keywords = typeof keywords === 'string' ? keywords.split(',') : keywords;
@@ -29,15 +43,16 @@ async function inspectionRoutes(fastify) {
 
   fastify.delete('/:siteName/:stationId/:folderName', {
     preHandler: [fastify.withPermission(PL.READ_EDIT, 'Delete inspections')],
-  }, async (request) => {
+  }, async (request, reply) => {
     const { siteName, stationId, folderName } = request.params;
+    if (!validateInspectionPath(reply, { siteName, stationId, folderName })) return;
     return inspectionHistory.deleteInspectionFolder(siteName, stationId, folderName);
   });
 
   // Multipart upload for creating an inspection
   fastify.post('/', {
     preHandler: [fastify.withPermission(PL.READ_EDIT, 'Create inspections')],
-  }, async (request) => {
+  }, async (request, reply) => {
     const parts = request.parts();
     const fields = {};
     const photoFiles = [];
@@ -59,6 +74,11 @@ async function inspectionRoutes(fastify) {
         fields[part.fieldname] = part.value;
       }
     }
+
+    if (!validateInspectionPath(reply, {
+      siteName: fields.siteName,
+      stationId: fields.stationId
+    })) return;
 
     const payload = {
       ...JSON.parse(fields.payload || '{}'),

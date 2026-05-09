@@ -1790,7 +1790,7 @@ class MongoPersistence extends IPersistence {
     }
   }
 
-  async loginAuthUser(nameOrEmail, hashedPassword) {
+  async loginAuthUser(nameOrEmail, plaintextPassword) {
     try {
       const loginId = String(nameOrEmail || '').trim();
       if (!loginId) {
@@ -1802,7 +1802,6 @@ class MongoPersistence extends IPersistence {
 
       const collection = mongoClient.getCollection(COLLECTIONS.AUTH_USERS);
       const user = await collection.findOne({
-        password: hashedPassword,
         $or: [
           { name: loginRegex },
           { email: loginRegex }
@@ -1813,17 +1812,36 @@ class MongoPersistence extends IPersistence {
         return { success: false, message: 'Invalid credentials' };
       }
 
-      // Update status and login time
-      await collection.updateOne(
-        { _id: user._id },
-        { 
-          $set: { 
-            status: 'Active', 
-            lastLogin: new Date().toISOString(),
-            _updatedAt: new Date()
-          }
+      const { verifyPassword, hashPassword } = require('../password');
+      const verification = await verifyPassword(plaintextPassword, user.password);
+      if (!verification.valid) {
+        return { success: false, message: 'Invalid credentials' };
+      }
+
+      const setUpdate = {
+        status: 'Active',
+        lastLogin: new Date().toISOString(),
+        _updatedAt: new Date()
+      };
+
+      // Transparently upgrade legacy SHA-256 hashes to argon2id on successful
+      // login. Fail closed: if the rehash write fails, abort the login so the
+      // user is forced to retry rather than continuing with the legacy hash.
+      if (verification.needsRehash) {
+        const newHash = await hashPassword(plaintextPassword);
+        const rehashRes = await collection.updateOne(
+          { _id: user._id, password: user.password },
+          { $set: { ...setUpdate, password: newHash } }
+        );
+        if (!rehashRes.matchedCount) {
+          return { success: false, message: 'Login conflict, please retry' };
         }
-      );
+      } else {
+        await collection.updateOne(
+          { _id: user._id },
+          { $set: setUpdate }
+        );
+      }
 
       return {
         success: true,

@@ -1,12 +1,8 @@
 // backend/auth.js
 const crypto = require('crypto');
 const { getPersistence } = require('./persistence');
-const { getFeatureFlags } = require('./feature_flags');
 const accessRequests = require('./access_requests');
-
-// Toggle to enable/disable authentication logic via feature-flags.json.
-// false means NO LOGIN; true means YES LOGIN
-const AUTH_ENABLED = getFeatureFlags().authEnabled;
+const { hashPassword } = require('./password');
 
 let currentUser = null;
 let sessionToken = null;
@@ -14,42 +10,21 @@ let sessionToken = null;
 const LEGACY_PERMISSION_LEVEL = 'Read and Edit General Info and Delete Functionalities';
 const UPDATED_PERMISSION_LEVEL = 'Read and Edit, including General Info, and Add Infrastructure';
 
-// Default dev user used when auth is disabled
-const DEV_USER = {
-  name: 'Developer',
-  email: 'developer@local',
-  admin: 'Yes',
-  permissions: 'All',
-  status: 'Active',
-  created: new Date().toISOString(),
-  lastLogin: ''
-};
-
 // Initialize auth workbook
 async function initAuthWorkbook() {
   try {
-    if (!AUTH_ENABLED) {
-      console.log('[auth] Auth disabled. Skipping workbook initialization.');
-      return { exists: true, disabled: true };
-    }
-
     console.log('[auth] Initializing auth persistence...');
     const persistence = await getPersistence();
 
     // Create the file through the worker
     const result = await persistence.createAuthWorkbook();
     console.log('[auth] Auth persistence initialized:', result);
-    
+
     return { exists: result.success };
   } catch (error) {
     console.error('[auth] Error initializing auth workbook:', error);
     throw error;
   }
-}
-
-// Hash password
-function hashPassword(password) {
-  return crypto.createHash('sha256').update(password).digest('hex');
 }
 
 // Validate email domain
@@ -87,31 +62,33 @@ function isSameUser(a, b) {
     || norm(a.email) && norm(a.email) === norm(b.email);
 }
 
-// Create user
+// Create user (public self-registration). Role and admin fields from the
+// body are intentionally ignored — clients cannot self-elect privileges.
+// First-admin bootstrap: if no users exist yet, the very first registrant is
+// promoted to Full Admin so a fresh deployment has someone who can manage it.
 async function createUser(userData) {
   try {
-    if (!AUTH_ENABLED) {
-      console.log('[auth] Auth disabled. createUser ignored.');
-      return { success: false, message: 'Authentication is disabled in backend/auth.js' };
-    }
+    const { name, email, password } = userData || {};
 
-    const { name, email, password, admin, permissions } = userData;
-    
     console.log('[auth] Creating user:', name);
-    
+
     if (!validateEmail(email)) {
       return { success: false, message: 'Email must be @ec.gc.ca domain' };
     }
 
-    const hashedPassword = hashPassword(password);
+    const isFirstUser = !(await hasUsers());
+    const permissions = isFirstUser ? 'Full Admin' : 'Read Only';
+    const admin = isFirstUser ? 'Yes' : 'No';
+
+    const hashedPassword = await hashPassword(password);
     const persistence = await getPersistence();
 
     const result = await persistence.createAuthUser({
       name,
       email: email.toLowerCase(),
       password: hashedPassword,
-      admin: admin ? 'Yes' : 'No',
-      permissions: permissions || 'Read',
+      admin,
+      permissions,
       status: 'Inactive',
       created: new Date().toISOString(),
       lastLogin: ''
@@ -127,9 +104,6 @@ async function createUser(userData) {
 
 async function adminCreateUser(userData, actingUser = null) {
   try {
-    if (!AUTH_ENABLED) {
-      return { success: false, message: 'Authentication is disabled in backend/auth.js' };
-    }
     const actor = actingUser || getCurrentUser();
     if (!isFullAdmin(actor)) {
       return { success: false, message: 'Only Full Admin can create users' };
@@ -144,7 +118,7 @@ async function adminCreateUser(userData, actingUser = null) {
     }
 
     const { admin, permissions } = mapPermissionLevelToRole(permissionLevel);
-    const hashedPassword = hashPassword(password);
+    const hashedPassword = await hashPassword(password);
     const persistence = await getPersistence();
 
     const result = await persistence.createAuthUser({
@@ -165,48 +139,33 @@ async function adminCreateUser(userData, actingUser = null) {
   }
 }
 
-// Login user
+// Login user. Plaintext password is verified inside the persistence layer,
+// which transparently rehashes legacy SHA-256 records to argon2id on success.
 async function loginUser(name, password) {
   try {
     console.log('[auth] Login attempt for:', name);
     const loginId = normalizeLoginInput(name);
 
-    if (!AUTH_ENABLED) {
-      // Bypass login and issue a dev session
-      currentUser = { ...DEV_USER, name: name || DEV_USER.name };
-      sessionToken = crypto.randomBytes(32).toString('hex');
-      console.log('[auth] Auth disabled. Bypassing login for:', currentUser.name);
-      return {
-        success: true,
-        user: currentUser,
-        token: sessionToken,
-        disabled: true
-      };
-    }
-    
-    // Check if any users exist via persistence before trying login
-    const userCheck = await hasUsers(); // Call local function directly
+    const userCheck = await hasUsers();
     if (!userCheck) {
       return { success: false, message: 'No users exist. Please create an account.' };
     }
 
-    const hashedPassword = hashPassword(password);
     const persistence = await getPersistence();
+    const result = await persistence.loginAuthUser(loginId, password);
 
-    const result = await persistence.loginAuthUser(loginId, hashedPassword);
-    
     if (result.success) {
       currentUser = result.user;
       sessionToken = crypto.randomBytes(32).toString('hex');
       console.log('[auth] Login successful for:', name);
-      
-      return { 
-        success: true, 
+
+      return {
+        success: true,
         user: currentUser,
         token: sessionToken
       };
     }
-    
+
     return result;
   } catch (error) {
     console.error('[auth] Login error:', error);
@@ -219,15 +178,9 @@ async function logoutUser() {
   try {
     if (!currentUser) return { success: true };
 
-    if (!AUTH_ENABLED) {
-      currentUser = null;
-      sessionToken = null;
-      return { success: true, disabled: true };
-    }
-
     const persistence = await getPersistence();
     const result = await persistence.logoutAuthUser(currentUser.name);
-    
+
     currentUser = null;
     sessionToken = null;
 
@@ -238,16 +191,33 @@ async function logoutUser() {
   }
 }
 
+// Allow-list of user fields safe to return through the API. Password hashes
+// and any other field whose name contains "password" or "hash" are
+// intentionally dropped so the JSON response cannot leak credentials, even if
+// a future persistence layer adds new columns.
+const SAFE_USER_FIELDS = ['name', 'email', 'permissions', 'admin', 'status', 'created', 'lastLogin'];
+
+function sanitizeUserForApi(user) {
+  if (!user || typeof user !== 'object') return user;
+  const out = {};
+  for (const key of SAFE_USER_FIELDS) {
+    if (user[key] !== undefined) out[key] = user[key];
+  }
+  // Defense-in-depth: never echo any unexpected field whose name looks like a
+  // credential (password / passwordHash / pass / hash / etc.).
+  for (const key of Object.keys(out)) {
+    if (/password|hash/i.test(key)) delete out[key];
+  }
+  return out;
+}
+
 // Get all users
 async function getAllUsers() {
   try {
-    if (!AUTH_ENABLED) {
-      return [DEV_USER];
-    }
-
     const persistence = await getPersistence();
     const result = await persistence.getAllAuthUsers();
-    return result.users || [];
+    const users = result.users || [];
+    return users.map(sanitizeUserForApi);
   } catch (error) {
     console.error('[auth] Error getting users:', error);
     return [];
@@ -257,8 +227,6 @@ async function getAllUsers() {
 // Check if any users exist
 async function hasUsers() {
   try {
-    if (!AUTH_ENABLED) return true;
-
     const persistence = await getPersistence();
     const result = await persistence.hasAuthUsers();
     return result.hasUsers || false;
@@ -270,24 +238,22 @@ async function hasUsers() {
 
 // Get current user
 function getCurrentUser() {
-  if (!AUTH_ENABLED) {
-    return currentUser || DEV_USER;
-  }
   return currentUser;
 }
 
 // Verify session
 function verifySession(token) {
-  if (!AUTH_ENABLED) return true;
   return token === sessionToken && currentUser !== null;
 }
 
-// Send access request (email + store pending request)
+// Send access request (email + store pending request). The requester does NOT
+// pick their own permission level — accounts are created Read Only and the
+// approver promotes them later from the Users page.
 async function sendAccessRequest(requestData) {
   try {
-    const { name, email, password, reason, approver, permissionLevel } = requestData || {};
+    const { name, email, password, reason, approver } = requestData || {};
 
-    if (!name || !email || !password || !reason || !approver || !permissionLevel) {
+    if (!name || !email || !password || !reason || !approver) {
       return { success: false, message: 'All fields are required' };
     }
 
@@ -295,14 +261,13 @@ async function sendAccessRequest(requestData) {
       return { success: false, message: 'Email must be @ec.gc.ca domain' };
     }
 
-    const hashedPassword = hashPassword(password);
+    const hashedPassword = await hashPassword(password);
     const result = await accessRequests.createRequest({
       name: name.trim(),
       email: email.trim().toLowerCase(),
       passwordHash: hashedPassword,
       reason: reason.trim(),
-      approverName: approver,
-      permissionLevel
+      approverName: approver
     });
 
     return result;
@@ -315,34 +280,34 @@ async function sendAccessRequest(requestData) {
 // Create account using access code issued to approver
 async function createUserWithCode(data) {
   try {
-    if (!AUTH_ENABLED) {
-      return { success: false, message: 'Authentication is disabled; no account needed' };
-    }
-
     const { nameOrEmail, password, accessCode } = data || {};
     if (!nameOrEmail || !password || !accessCode) {
       return { success: false, message: 'Name/email, password, and access code are required' };
     }
 
-    const hashedPassword = hashPassword(password);
     const consumeResult = await accessRequests.consumeRequest(nameOrEmail, accessCode);
     if (!consumeResult.success) {
       return consumeResult;
     }
 
     const request = consumeResult.request;
-    if (request.passwordHash !== hashedPassword) {
+    const { verifyPassword } = require('./password');
+    const verification = await verifyPassword(password, request.passwordHash);
+    if (!verification.valid) {
       return { success: false, message: 'Password does not match the original request. Please resend request.' };
     }
 
-    const { admin, permissions } = mapPermissionLevelToRole(request.permissionLevel);
+    // Always store an argon2id hash for the new account, regardless of how the
+    // request was hashed.
+    const newHash = await hashPassword(password);
+
     const persistence = await getPersistence();
     const creation = await persistence.createAuthUser({
       name: request.name,
       email: request.email,
-      password: hashedPassword,
-      admin,
-      permissions,
+      password: newHash,
+      admin: 'No',
+      permissions: 'Read Only',
       status: 'Inactive',
       created: new Date().toISOString(),
       lastLogin: ''
@@ -357,9 +322,6 @@ async function createUserWithCode(data) {
 
 async function updateUser(targetNameOrEmail, updates = {}, actingUser = null) {
   try {
-    if (!AUTH_ENABLED) {
-      return { success: false, message: 'Authentication is disabled; no account needed' };
-    }
     if (!targetNameOrEmail) return { success: false, message: 'Target user is required' };
     const actor = actingUser || getCurrentUser();
     const normalizedTarget = String(targetNameOrEmail || '').trim();
@@ -390,7 +352,7 @@ async function updateUser(targetNameOrEmail, updates = {}, actingUser = null) {
       if (updates.name) updatePayload.name = String(updates.name || '').trim();
       if (updates.email) updatePayload.email = String(updates.email || '').trim().toLowerCase();
       if (updates.password) {
-        updatePayload.passwordHash = hashPassword(updates.password);
+        updatePayload.passwordHash = await hashPassword(updates.password);
       }
     } else {
       // For other users, explicitly block name/email/password changes
@@ -411,9 +373,6 @@ async function updateUser(targetNameOrEmail, updates = {}, actingUser = null) {
 
 async function deleteUser(targetNameOrEmail, actingUser = null) {
   try {
-    if (!AUTH_ENABLED) {
-      return { success: false, message: 'Authentication is disabled; no account needed' };
-    }
     if (!targetNameOrEmail) return { success: false, message: 'Target user is required' };
     const actor = actingUser || getCurrentUser();
     if (!isFullAdmin(actor)) {

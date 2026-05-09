@@ -13,12 +13,12 @@ async function authRoutes(fastify) {
     if (!result || !result.success) return result || { success: false };
 
     const user = result.user || result;
-    const token = fastify.jwt.sign({
+    const token = await reply.jwtSign({
       name: user.name,
       email: user.email,
       permissions: user.permissions,
       admin: user.admin,
-    });
+    }, { expiresIn: '8h' });
 
     reply.setCookie('token', token, {
       path: '/',
@@ -51,7 +51,9 @@ async function authRoutes(fastify) {
     return null;
   });
 
-  fastify.get('/users', async () => auth.getAllUsers());
+  fastify.get('/users', {
+    preHandler: [fastify.withPermission(PL.FULL_ADMIN, 'List users')],
+  }, async () => auth.getAllUsers());
 
   fastify.put('/users/:target', async (request, reply) => {
     const { target } = request.params;

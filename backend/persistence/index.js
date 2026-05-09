@@ -19,7 +19,7 @@ async function getPersistence(forceRecreate = false) {
   }
 
   try {
-    const configPath = path.join(__dirname, '..', 'db-config.json');
+    const configPath = process.env.KASMGT_DB_CONFIG || path.join(__dirname, '..', 'db-config.json');
     persistenceInstance = await PersistenceFactory.createFromFile(configPath);
     return persistenceInstance;
   } catch (error) {

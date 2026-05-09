@@ -60,12 +60,6 @@
     }
   }
 
-  function maskPassword(password) {
-    if (!password) return '********';
-    const firstChar = password.charAt(0);
-    return '*******';
-  }
-
   function renderUsers(users) {
     const grid = document.getElementById('usersGrid');
     if (!grid) return;
@@ -91,10 +85,6 @@
           <p class="user-email">${user.email || ''}</p>
         </div>
         <div class="user-details">
-          <div class="detail-row">
-            <span class="detail-label">Password:</span>
-            <span class="detail-value password-masked">${maskPassword(user.password)}</span>
-          </div>
           <div class="detail-row">
             <span class="detail-label">Role:</span>
             <span class="detail-value">${user.admin ? 'Admin' : 'User'}</span>

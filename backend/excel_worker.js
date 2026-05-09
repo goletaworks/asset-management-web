@@ -3269,15 +3269,15 @@ async function createAuthUser(userData) {
   return { success: true };
 }
 
-async function loginAuthUser(nameOrEmail, hashedPassword) {
+async function loginAuthUser(nameOrEmail, plaintextPassword) {
   const { workbook, sheet } = await loadAuthWorkbook();
-  
+
   if (!sheet) {
     return { success: false, message: 'Users sheet not found' };
   }
 
-  let foundUser = null;
-  let foundRowNum = 0;
+  let candidate = null;
+  let candidateRowNum = 0;
   const loginId = String(nameOrEmail || '').trim().toLowerCase();
 
   sheet.eachRow((row, rowNum) => {
@@ -3285,34 +3285,57 @@ async function loginAuthUser(nameOrEmail, hashedPassword) {
 
     const rowName = String(row.getCell(1).value || '').trim();
     const rowEmail = String(row.getCell(2).value || '').trim();
-    const rowPassword = row.getCell(3).value;
-    
+
     const matchesLogin =
       (rowName && rowName.toLowerCase() === loginId) ||
       (rowEmail && rowEmail.toLowerCase() === loginId);
 
-    if (matchesLogin && rowPassword === hashedPassword) {
-      foundUser = {
+    if (matchesLogin && !candidate) {
+      candidate = {
         name: rowName,
         email: row.getCell(2).value,
+        passwordStored: String(row.getCell(3).value || ''),
         admin: row.getCell(4).value === 'Yes',
         permissions: row.getCell(5).value
       };
-      foundRowNum = rowNum;
+      candidateRowNum = rowNum;
     }
   });
 
-  if (!foundUser) {
+  if (!candidate) {
     return { success: false, message: 'Invalid credentials' };
   }
 
-  // Update status and last login (columns: 6=Status, 8=LastLogin)
-  const row = sheet.getRow(foundRowNum);
+  const { verifyPassword, hashPassword } = require('./password');
+  const verification = await verifyPassword(plaintextPassword, candidate.passwordStored);
+  if (!verification.valid) {
+    return { success: false, message: 'Invalid credentials' };
+  }
+
+  const row = sheet.getRow(candidateRowNum);
+  // Transparently upgrade legacy SHA-256 hashes to argon2id on successful
+  // login. Fail closed: if the rehash write fails, abort the login.
+  if (verification.needsRehash) {
+    try {
+      const newHash = await hashPassword(plaintextPassword);
+      row.getCell(3).value = newHash;
+    } catch (err) {
+      return { success: false, message: 'Login conflict, please retry' };
+    }
+  }
   row.getCell(6).value = 'Active';
   row.getCell(8).value = new Date().toISOString();
-  
+
   await writeAuthWorkbookSafe(workbook);
-  return { success: true, user: foundUser };
+  return {
+    success: true,
+    user: {
+      name: candidate.name,
+      email: candidate.email,
+      admin: candidate.admin,
+      permissions: candidate.permissions
+    }
+  };
 }
 
 async function logoutAuthUser(name) {

@@ -35,18 +35,6 @@ async function authPlugin(fastify) {
         admin: decoded.admin,
       };
     } catch (err) {
-      // Check if auth is disabled via feature flags
-      const { getFeatureFlags } = require('../backend/feature_flags');
-      const flags = getFeatureFlags();
-      if (!flags.authEnabled) {
-        request.user = {
-          name: 'Developer',
-          email: 'developer@local',
-          permissions: 'All',
-          admin: 'Yes',
-        };
-        return;
-      }
       reply.code(401).send({ success: false, code: 'unauthorized', message: 'Authentication required' });
     }
   });

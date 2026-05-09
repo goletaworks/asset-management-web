@@ -1,6 +1,7 @@
 'use strict';
 
 const backend = require('../backend/app');
+const { assertSafePathSegment } = require('../backend/utils/path_safety');
 
 let _excelClient = null;
 function getExcelClient() {
@@ -10,15 +11,34 @@ function getExcelClient() {
   return _excelClient;
 }
 
+function validateExcelPathInputs(reply, inputs) {
+  try {
+    for (const [name, value] of Object.entries(inputs)) {
+      // Skip values that were not provided at all. Empty strings are
+      // intentionally validated and rejected by assertSafePathSegment.
+      if (value === undefined || value === null) continue;
+      assertSafePathSegment(value, name);
+    }
+    return true;
+  } catch (err) {
+    reply.code(err.statusCode || 400).send({ success: false, message: err.message });
+    return false;
+  }
+}
+
 async function excelRoutes(fastify) {
   const PL = fastify.PERMISSION_LEVELS;
 
   // Sheet listing from base64 workbook
-  fastify.post('/list-sheets', async (request) => {
+  fastify.post('/list-sheets', {
+    preHandler: [fastify.withPermission(PL.READ_EDIT, 'List Excel sheets')],
+  }, async (request) => {
     return backend.listExcelSheets(request.body.b64);
   });
 
-  fastify.post('/parse-rows-from-sheet', async (request) => {
+  fastify.post('/parse-rows-from-sheet', {
+    preHandler: [fastify.withPermission(PL.READ_EDIT, 'Parse rows from Excel sheet')],
+  }, async (request) => {
     const { b64, sheetName } = request.body;
     return getExcelClient().parseRowsFromSheet(b64, sheetName);
   });
@@ -30,13 +50,15 @@ async function excelRoutes(fastify) {
   });
 
   // Location workbook
-  fastify.get('/location-workbook', async (request) => {
+  fastify.get('/location-workbook', async (request, reply) => {
     const { company, locationName } = request.query;
+    if (!validateExcelPathInputs(reply, { company, locationName })) return;
     return getExcelClient().readLocationWorkbook(company, locationName);
   });
 
-  fastify.get('/sheet-data', async (request) => {
+  fastify.get('/sheet-data', async (request, reply) => {
     const { company, locationName, sheetName } = request.query;
+    if (!validateExcelPathInputs(reply, { company, locationName, sheetName })) return;
     return getExcelClient().readSheetData(company, locationName, sheetName);
   });
 
@@ -62,33 +84,39 @@ async function excelRoutes(fastify) {
   });
 
   // Workbook field catalog
-  fastify.get('/field-catalog', async (request) => {
+  fastify.get('/field-catalog', async (request, reply) => {
     const { company, locationName } = request.query;
+    if (!validateExcelPathInputs(reply, { company, locationName })) return;
     return getExcelClient().getWorkbookFieldCatalog(company, locationName);
   });
 
   // Funding settings
-  fastify.get('/funding-settings', async (request) => {
+  fastify.get('/funding-settings', async (request, reply) => {
     const { company, location } = request.query;
+    if (!validateExcelPathInputs(reply, { company, location })) return;
     return getExcelClient().getFundingSettings(company, location);
   });
 
   fastify.post('/funding-settings', {
     preHandler: [fastify.withPermission(PL.READ_EDIT_GI, 'Edit funding settings')],
-  }, async (request) => {
-    const { company, location, settings } = request.body;
+  }, async (request, reply) => {
+    const { company, location, settings } = request.body || {};
+    if (!validateExcelPathInputs(reply, { company, location })) return;
     return getExcelClient().saveFundingSettings(company, location, settings);
   });
 
   fastify.post('/funding-settings-asset-type', {
     preHandler: [fastify.withPermission(PL.READ_EDIT_GI, 'Edit funding settings for asset type')],
-  }, async (request) => {
-    const { company, location, assetType, settings } = request.body;
+  }, async (request, reply) => {
+    const { company, location, assetType, settings } = request.body || {};
+    if (!validateExcelPathInputs(reply, { company, location, assetType })) return;
     return getExcelClient().saveFundingSettingsForAssetType(company, location, assetType, settings);
   });
 
-  fastify.get('/all-funding-settings', async (request) => {
-    return getExcelClient().getAllFundingSettings(request.query.company);
+  fastify.get('/all-funding-settings', async (request, reply) => {
+    const { company } = request.query;
+    if (!validateExcelPathInputs(reply, { company })) return;
+    return getExcelClient().getAllFundingSettings(company);
   });
 
   fastify.post('/normalize-funding-overrides', {
